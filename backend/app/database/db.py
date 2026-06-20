@@ -78,3 +78,45 @@ def get_all_tracks():
         })
 
     return tracks
+
+def init_metadata_table():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def save_metadata(key, value):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO metadata (key, value)
+        VALUES (?, ?)
+        """,
+        (key, value)
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_metadata(key):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT value FROM metadata WHERE key = ?", (key,))
+    row = cursor.fetchone()
+
+    conn.close()
+
+    return row[0] if row else None

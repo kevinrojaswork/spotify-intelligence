@@ -11,7 +11,9 @@ type DashboardStats = {
   top_artists: TopItem[];
   top_songs: TopItem[];
   top_albums: TopItem[];
+  last_sync: string | null;
 };
+
 
 function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -30,8 +32,12 @@ function Dashboard() {
         <p className="section-label">Music Analysis Engine</p>
         <h2>Tu biblioteca musical ya fue analizada.</h2>
         <p>
-          Estadísticas generadas desde el motor central de Spotify Intelligence.
-        </p>
+  Estadísticas generadas desde el motor central de Spotify Intelligence.
+</p>
+
+<p>
+  Última sincronización: {stats?.last_sync ?? "No sincronizado todavía"}
+</p>
       </section>
 
       <section className="stats-grid">

@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 
 from app.spotify import spotify_oauth
 from app.services.spotify_service import save_token, get_spotify_client
-from app.engine.music_engine import load_library_from_spotify
+from app.engine.music_engine import engine
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ def spotify_callback(code: str):
     sp = get_spotify_client()
 
     if sp:
-        load_library_from_spotify(sp)
+        engine.sync(sp)
 
     return RedirectResponse(
         url="http://localhost:5173?spotify_connected=true"
