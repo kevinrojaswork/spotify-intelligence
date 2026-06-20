@@ -5,15 +5,21 @@ type TopItem = {
   count: number;
 };
 
+type DuplicateSong = {
+  name: string;
+  playlist_count: number;
+  playlists: string[];
+};
+
 type DashboardStats = {
   total_tracks: number;
   total_playlists: number;
   top_artists: TopItem[];
   top_songs: TopItem[];
   top_albums: TopItem[];
+  duplicate_songs: DuplicateSong[];
   last_sync: string | null;
 };
-
 
 function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -32,12 +38,11 @@ function Dashboard() {
         <p className="section-label">Music Analysis Engine</p>
         <h2>Tu biblioteca musical ya fue analizada.</h2>
         <p>
-  Estadísticas generadas desde el motor central de Spotify Intelligence.
-</p>
-
-<p>
-  Última sincronización: {stats?.last_sync ?? "No sincronizado todavía"}
-</p>
+          Estadísticas generadas desde el motor central de Spotify Intelligence.
+        </p>
+        <p>
+          Última sincronización: {stats?.last_sync ?? "No sincronizado todavía"}
+        </p>
       </section>
 
       <section className="stats-grid">
@@ -97,6 +102,21 @@ function Dashboard() {
             {index + 1}. {album.name} — {album.count} canciones
           </p>
         ))}
+      </section>
+
+      <section className="discovery-card">
+        <p className="section-label">Canciones duplicadas</p>
+        <h2>Canciones que aparecen en varias playlists</h2>
+
+        {stats?.duplicate_songs.length === 0 ? (
+          <p>No encontramos canciones repetidas entre playlists.</p>
+        ) : (
+          stats?.duplicate_songs.map((song, index) => (
+            <p key={song.name}>
+              {index + 1}. {song.name} — aparece en {song.playlist_count} playlists
+            </p>
+          ))
+        )}
       </section>
     </div>
   );
