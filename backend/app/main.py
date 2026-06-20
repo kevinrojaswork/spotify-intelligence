@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import auth, profile, playlists, artists, songs
+from app.routes import auth, profile, playlists, artists, songs, engine
 
 app = FastAPI(title="Spotify Intelligence API")
 
@@ -18,7 +18,7 @@ app.include_router(profile.router, tags=["Profile"])
 app.include_router(playlists.router, tags=["Playlists"])
 app.include_router(artists.router, tags=["Artists"])
 app.include_router(songs.router, tags=["Songs"])
-
+app.include_router(engine.router, tags=["Engine"])
 
 @app.get("/")
 def home():
