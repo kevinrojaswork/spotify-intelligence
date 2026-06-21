@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
 
+import DiscoveryCard from "../components/DiscoveryCard";
+import StatsGrid from "../components/StatsGrid";
+import DominantArtistCard from "../components/DominantArtistCard";
+import PlaylistInsightsCard from "../components/PlaylistInsightsCard";
+import TopListCard from "../components/TopListCard";
+import DuplicateSongsCard from "../components/DuplicateSongsCard";
+import MusicalDNACard from "../components/MusicalDNACard";
+
 type TopItem = {
   name: string;
   count: number;
@@ -11,9 +19,24 @@ type DuplicateSong = {
   playlists: string[];
 };
 
+type PlaylistInsight = {
+  name: string;
+  count: number;
+};
+
 type DominantArtist = {
   name: string;
   count: number;
+};
+
+type MusicalDNA = {
+  diversity_score: number;
+  diversity_label: string;
+  concentration_label: string;
+  duplicate_label: string;
+  total_unique_artists: number;
+  duplicate_songs_count: number;
+  summary: string;
 };
 
 type DashboardStats = {
@@ -25,6 +48,9 @@ type DashboardStats = {
   duplicate_songs: DuplicateSong[];
   dominant_artist: DominantArtist | null;
   dominant_artist_percentage: number;
+  largest_playlist: PlaylistInsight | null;
+  smallest_playlist: PlaylistInsight | null;
+  musical_dna: MusicalDNA;
   daily_discovery: string;
   last_sync: string | null;
 };
@@ -35,110 +61,68 @@ function Dashboard() {
   useEffect(() => {
     fetch("http://127.0.0.1:8000/engine/dashboard")
       .then((res) => res.json())
-      .then((data) => {
-        setStats(data);
-      });
+      .then((data) => setStats(data));
   }, []);
+
+  if (!stats) {
+    return (
+      <div className="dashboard">
+        <section className="discovery-card">
+          <p className="section-label">Cargando</p>
+          <h2>Analizando tu biblioteca musical...</h2>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard">
-      <section className="discovery-card">
-        <p className="section-label">Descubrimiento del día</p>
-        <h2>{stats?.daily_discovery ?? "Analizando tu biblioteca..."}</h2>
-        <p>
-          Última sincronización: {stats?.last_sync ?? "No sincronizado todavía"}
-        </p>
-      </section>
+      <DiscoveryCard
+        discovery={stats.daily_discovery}
+        lastSync={stats.last_sync}
+      />
 
-      <section className="stats-grid">
-        <div className="stat-card">
-          <span>🎵</span>
-          <p>Canciones</p>
-          <h3>{stats ? stats.total_tracks : "--"}</h3>
-        </div>
+      <StatsGrid
+        totalTracks={stats.total_tracks}
+        totalPlaylists={stats.total_playlists}
+        topArtistsCount={stats.top_artists.length}
+        topAlbumsCount={stats.top_albums.length}
+      />
 
-        <div className="stat-card">
-          <span>🎤</span>
-          <p>Top artistas</p>
-          <h3>{stats ? stats.top_artists.length : "--"}</h3>
-        </div>
+      <MusicalDNACard dna={stats.musical_dna} />
 
-        <div className="stat-card">
-          <span>💿</span>
-          <p>Top álbumes</p>
-          <h3>{stats ? stats.top_albums.length : "--"}</h3>
-        </div>
+      <DominantArtistCard
+        artist={stats.dominant_artist}
+        percentage={stats.dominant_artist_percentage}
+      />
 
-        <div className="stat-card">
-          <span>📁</span>
-          <p>Playlists</p>
-          <h3>{stats ? stats.total_playlists : "--"}</h3>
-        </div>
-      </section>
+      <PlaylistInsightsCard
+        largestPlaylist={stats.largest_playlist}
+        smallestPlaylist={stats.smallest_playlist}
+      />
 
-      <section className="discovery-card">
-        <p className="section-label">Artista dominante</p>
-        <h2>
-          {stats?.dominant_artist
-            ? stats.dominant_artist.name
-            : "Todavía no hay artista dominante"}
-        </h2>
+      <TopListCard
+        label="Top artistas"
+        title="Tus artistas más presentes en playlists"
+        items={stats.top_artists}
+        unit="canciones"
+      />
 
-        {stats?.dominant_artist && (
-          <p>
-            Aparece {stats.dominant_artist.count} veces, equivalente al{" "}
-            {stats.dominant_artist_percentage}% de tus canciones analizadas.
-          </p>
-        )}
-      </section>
+      <TopListCard
+        label="Top canciones"
+        title="Tus canciones más repetidas en playlists"
+        items={stats.top_songs}
+        unit="veces"
+      />
 
-      <section className="discovery-card">
-        <p className="section-label">Top artistas</p>
-        <h2>Tus artistas más presentes en playlists</h2>
+      <TopListCard
+        label="Top álbumes"
+        title="Tus álbumes más presentes en playlists"
+        items={stats.top_albums}
+        unit="canciones"
+      />
 
-        {stats?.top_artists.map((artist, index) => (
-          <p key={artist.name}>
-            {index + 1}. {artist.name} — {artist.count} canciones
-          </p>
-        ))}
-      </section>
-
-      <section className="discovery-card">
-        <p className="section-label">Top canciones</p>
-        <h2>Tus canciones más repetidas en playlists</h2>
-
-        {stats?.top_songs.map((song, index) => (
-          <p key={song.name}>
-            {index + 1}. {song.name} — {song.count} veces
-          </p>
-        ))}
-      </section>
-
-      <section className="discovery-card">
-        <p className="section-label">Top álbumes</p>
-        <h2>Tus álbumes más presentes en playlists</h2>
-
-        {stats?.top_albums.map((album, index) => (
-          <p key={album.name}>
-            {index + 1}. {album.name} — {album.count} canciones
-          </p>
-        ))}
-      </section>
-
-      <section className="discovery-card">
-        <p className="section-label">Canciones duplicadas</p>
-        <h2>Canciones que aparecen en varias playlists</h2>
-
-        {stats?.duplicate_songs.length === 0 ? (
-          <p>No encontramos canciones repetidas entre playlists.</p>
-        ) : (
-          stats?.duplicate_songs.map((song, index) => (
-            <p key={song.name}>
-              {index + 1}. {song.name} — aparece en {song.playlist_count} playlists
-            </p>
-          ))
-        )}
-      </section>
+      <DuplicateSongsCard songs={stats.duplicate_songs} />
     </div>
   );
 }
