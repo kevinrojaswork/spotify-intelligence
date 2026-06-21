@@ -11,6 +11,11 @@ type DuplicateSong = {
   playlists: string[];
 };
 
+type DominantArtist = {
+  name: string;
+  count: number;
+};
+
 type DashboardStats = {
   total_tracks: number;
   total_playlists: number;
@@ -18,6 +23,9 @@ type DashboardStats = {
   top_songs: TopItem[];
   top_albums: TopItem[];
   duplicate_songs: DuplicateSong[];
+  dominant_artist: DominantArtist | null;
+  dominant_artist_percentage: number;
+  daily_discovery: string;
   last_sync: string | null;
 };
 
@@ -35,11 +43,8 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <section className="discovery-card">
-        <p className="section-label">Music Analysis Engine</p>
-        <h2>Tu biblioteca musical ya fue analizada.</h2>
-        <p>
-          Estadísticas generadas desde el motor central de Spotify Intelligence.
-        </p>
+        <p className="section-label">Descubrimiento del día</p>
+        <h2>{stats?.daily_discovery ?? "Analizando tu biblioteca..."}</h2>
         <p>
           Última sincronización: {stats?.last_sync ?? "No sincronizado todavía"}
         </p>
@@ -69,6 +74,22 @@ function Dashboard() {
           <p>Playlists</p>
           <h3>{stats ? stats.total_playlists : "--"}</h3>
         </div>
+      </section>
+
+      <section className="discovery-card">
+        <p className="section-label">Artista dominante</p>
+        <h2>
+          {stats?.dominant_artist
+            ? stats.dominant_artist.name
+            : "Todavía no hay artista dominante"}
+        </h2>
+
+        {stats?.dominant_artist && (
+          <p>
+            Aparece {stats.dominant_artist.count} veces, equivalente al{" "}
+            {stats.dominant_artist_percentage}% de tus canciones analizadas.
+          </p>
+        )}
       </section>
 
       <section className="discovery-card">

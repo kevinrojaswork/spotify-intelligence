@@ -91,28 +91,77 @@ class MusicAnalysisEngine:
             reverse=True
         )
 
+        top_artists = [
+            {"name": n, "count": c}
+            for n, c in artist_counter.most_common(10)
+        ]
+
+        top_songs = [
+            {"name": n, "count": c}
+            for n, c in song_counter.most_common(10)
+        ]
+
+        top_albums = [
+            {"name": n, "count": c}
+            for n, c in album_counter.most_common(10)
+        ]
+
+        dominant_artist = top_artists[0] if top_artists else None
+        dominant_artist_percentage = 0
+
+        if dominant_artist and len(self.tracks) > 0:
+            dominant_artist_percentage = round(
+                (dominant_artist["count"] / len(self.tracks)) * 100,
+                2
+            )
+
+        daily_discovery = self.generate_daily_discovery(
+            dominant_artist,
+            dominant_artist_percentage,
+            duplicate_songs,
+            len(self.tracks),
+            len(playlists)
+        )
+
         return {
             "total_tracks": len(self.tracks),
             "total_playlists": len(playlists),
-
-            "top_artists": [
-                {"name": n, "count": c}
-                for n, c in artist_counter.most_common(10)
-            ],
-
-            "top_songs": [
-                {"name": n, "count": c}
-                for n, c in song_counter.most_common(10)
-            ],
-
-            "top_albums": [
-                {"name": n, "count": c}
-                for n, c in album_counter.most_common(10)
-            ],
-
+            "top_artists": top_artists,
+            "top_songs": top_songs,
+            "top_albums": top_albums,
             "duplicate_songs": duplicate_songs[:10],
+            "dominant_artist": dominant_artist,
+            "dominant_artist_percentage": dominant_artist_percentage,
+            "daily_discovery": daily_discovery,
             "last_sync": get_metadata("last_sync"),
         }
+
+    def generate_daily_discovery(
+        self,
+        dominant_artist,
+        dominant_artist_percentage,
+        duplicate_songs,
+        total_tracks,
+        total_playlists
+    ):
+        if dominant_artist:
+            return (
+                f"{dominant_artist['name']} domina tu biblioteca: aparece "
+                f"{dominant_artist['count']} veces, equivalente al "
+                f"{dominant_artist_percentage}% de tus canciones analizadas."
+            )
+
+        if duplicate_songs:
+            top_duplicate = duplicate_songs[0]
+            return (
+                f"La canción más repetida es {top_duplicate['name']}, "
+                f"presente en {top_duplicate['playlist_count']} playlists."
+            )
+
+        return (
+            f"Tu biblioteca contiene {total_tracks} canciones "
+            f"organizadas en {total_playlists} playlists."
+        )
 
 
 engine = MusicAnalysisEngine()
