@@ -7,6 +7,7 @@ import PlaylistInsightsCard from "../components/PlaylistInsightsCard";
 import TopListCard from "../components/TopListCard";
 import DuplicateSongsCard from "../components/DuplicateSongsCard";
 import MusicalDNACard from "../components/MusicalDNACard";
+import SmartInsightsCard from "../components/SmartInsightsCard";
 
 type TopItem = {
   name: string;
@@ -51,6 +52,7 @@ type DashboardStats = {
   largest_playlist: PlaylistInsight | null;
   smallest_playlist: PlaylistInsight | null;
   musical_dna: MusicalDNA;
+  smart_insights: string[];
   daily_discovery: string;
   last_sync: string | null;
 };
@@ -68,7 +70,7 @@ function Dashboard() {
     return (
       <div className="dashboard">
         <section className="discovery-card">
-          <p className="section-label">Cargando</p>
+          <p className="section-label">Cargando...</p>
           <h2>Analizando tu biblioteca musical...</h2>
         </section>
       </div>
@@ -90,6 +92,8 @@ function Dashboard() {
       />
 
       <MusicalDNACard dna={stats.musical_dna} />
+
+      <SmartInsightsCard insights={stats.smart_insights} />
 
       <DominantArtistCard
         artist={stats.dominant_artist}
