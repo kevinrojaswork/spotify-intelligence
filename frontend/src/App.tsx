@@ -4,7 +4,9 @@ import Dashboard from "./pages/Dashboard";
 import Layout from "./components/Layout";
 
 function App() {
-  const [started, setStarted] = useState(false);
+  const [started, setStarted] = useState(() => {
+    return window.location.search.includes("spotify_connected=true");
+  });
 
   if (!started) {
     return <Landing onStart={() => setStarted(true)} />;
