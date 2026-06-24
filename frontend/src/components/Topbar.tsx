@@ -1,6 +1,6 @@
 function Topbar() {
   const connectSpotify = async () => {
-    const response = await fetch("http://127.0.0.1:8000/auth/login");
+    const response = await fetch("https://spotify-intelligence-production.up.railway.app/auth/login");
     const data = await response.json();
 
     window.location.href = data.auth_url;
