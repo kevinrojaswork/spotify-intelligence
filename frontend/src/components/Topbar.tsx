@@ -8,7 +8,7 @@ function Topbar() {
 
   console.log("Spotify auth data:", data);
 
-  window.location.href = data.auth_url;
+  window.location.assign(data.auth_url);
 };
 
   return (
