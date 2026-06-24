@@ -24,5 +24,5 @@ def spotify_callback(code: str):
         engine.sync(sp)
 
     return RedirectResponse(
-        url="https://spotify-intelligence.vercel.app?spotify_connected=true"
-    )
+    url="https://spotify-intelligence.vercel.app/?spotify_connected=true"
+)
