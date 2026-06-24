@@ -1,10 +1,15 @@
 function Topbar() {
   const connectSpotify = async () => {
-    const response = await fetch("https://spotify-intelligence-production.up.railway.app/auth/login");
-    const data = await response.json();
+  const response = await fetch(
+    "https://spotify-intelligence-production.up.railway.app/auth/login"
+  );
 
-    window.location.href = data.auth_url;
-  };
+  const data = await response.json();
+
+  console.log("Spotify auth data:", data);
+
+  window.location.href = data.auth_url;
+};
 
   return (
     <header className="topbar">
