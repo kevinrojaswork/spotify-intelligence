@@ -61,7 +61,7 @@ function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
-    fetch("http://https://spotify-intelligence-production.up.railway.app/engine/dashboard")
+    fetch("https://spotify-intelligence-production.up.railway.app/engine/dashboard")
       .then((res) => res.json())
       .then((data) => setStats(data));
   }, []);
