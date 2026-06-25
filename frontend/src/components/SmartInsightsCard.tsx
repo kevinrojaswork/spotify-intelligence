@@ -4,15 +4,18 @@ type Props = {
 
 function SmartInsightsCard({ insights }: Props) {
   return (
-    <section className="discovery-card">
+    <section className="discovery-card insights-card">
       <p className="section-label">Insights inteligentes</p>
       <h2>Patrones detectados en tu biblioteca</h2>
 
-      {insights.map((insight, index) => (
-        <p key={index}>
-          {index + 1}. {insight}
-        </p>
-      ))}
+      <div className="insights-list">
+        {insights.map((insight, index) => (
+          <div className="insight-item" key={index}>
+            <span>🧠</span>
+            <p>{insight}</p>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
