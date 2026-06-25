@@ -67,15 +67,16 @@ function Dashboard() {
   }, []);
 
   if (!stats) {
-    return (
-      <div className="dashboard">
-        <section className="discovery-card">
-          <p className="section-label">Cargando...</p>
-          <h2>Analizando tu biblioteca musical...</h2>
-        </section>
-      </div>
-    );
-  }
+  return (
+    <div className="dashboard">
+      <section className="discovery-card loading-card">
+        <p className="section-label">Cargando...</p>
+        <h2>Analizando tu biblioteca musical...</h2>
+        <div className="loading-pulse" />
+      </section>
+    </div>
+  );
+}
 
   return (
     <div className="dashboard">

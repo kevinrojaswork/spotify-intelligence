@@ -20,19 +20,48 @@ from app.analyzers.insight_analyzer import InsightAnalyzer
 
 
 class MusicAnalysisEngine:
-
     def __init__(self):
         self.tracks = []
 
+    def get_all_playlists(self, sp):
+        playlists = []
+        results = sp.current_user_playlists(limit=50)
+
+        while results:
+            playlists.extend(results["items"])
+
+            if results["next"]:
+                results = sp.next(results)
+            else:
+                break
+
+        return playlists
+
+    def get_all_playlist_tracks(self, sp, playlist_id):
+        tracks = []
+        results = sp.playlist_tracks(playlist_id, limit=100)
+
+        while results:
+            tracks.extend(results["items"])
+
+            if results["next"]:
+                results = sp.next(results)
+            else:
+                break
+
+        return tracks
+
     def sync(self, sp):
-        playlists = sp.current_user_playlists(limit=50)
+        playlists = self.get_all_playlists(sp)
         tracks_data = []
 
-        for playlist in playlists["items"]:
+        for playlist in playlists:
             playlist_name = playlist["name"]
-            results = sp.playlist_tracks(playlist["id"])
+            playlist_id = playlist["id"]
 
-            for item in results["items"]:
+            playlist_tracks = self.get_all_playlist_tracks(sp, playlist_id)
+
+            for item in playlist_tracks:
                 track = item.get("track")
 
                 if not track:
@@ -58,9 +87,9 @@ class MusicAnalysisEngine:
         self.tracks = tracks_data
 
         return {
-            "message": "Biblioteca sincronizada correctamente",
+            "message": "Biblioteca sincronizada completamente",
             "tracks_loaded": len(tracks_data),
-            "playlists_loaded": len(playlists["items"]),
+            "playlists_loaded": len(playlists),
         }
 
     def analyze(self):
@@ -97,18 +126,14 @@ class MusicAnalysisEngine:
         return {
             "total_tracks": len(self.tracks),
             "total_playlists": playlist_data["total_playlists"],
-
             "top_artists": artist_data["top_artists"],
             "top_songs": top_songs,
             "top_albums": album_data["top_albums"],
-
             "duplicate_songs": duplicate_data["duplicate_songs"],
             "dominant_artist": artist_data["dominant_artist"],
             "dominant_artist_percentage": artist_data["dominant_artist_percentage"],
-
             "largest_playlist": playlist_data["largest_playlist"],
             "smallest_playlist": playlist_data["smallest_playlist"],
-
             "musical_dna": dna_data,
             "smart_insights": smart_insights,
             "daily_discovery": daily_discovery,
@@ -127,12 +152,7 @@ class MusicAnalysisEngine:
             for name, count in song_counter.most_common(10)
         ]
 
-    def generate_daily_discovery(
-        self,
-        artist_data,
-        duplicate_data,
-        playlist_data,
-    ):
+    def generate_daily_discovery(self, artist_data, duplicate_data, playlist_data):
         dominant_artist = artist_data["dominant_artist"]
         dominant_percentage = artist_data["dominant_artist_percentage"]
 

@@ -330,3 +330,61 @@
   color: #1db954;
   font-weight: 800;
 }
+
+@media (max-width: 700px) {
+  .topbar h1 {
+    font-size: 36px;
+  }
+
+  .connect-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .discovery-card {
+    padding: 22px;
+    border-radius: 22px;
+  }
+
+  .stats-grid,
+  .dna-grid,
+  .playlist-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .top-list-header {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .duplicate-item,
+  .insight-item {
+    align-items: flex-start;
+  }
+}
+
+.loading-pulse {
+  width: 64px;
+  height: 64px;
+  margin: 28px auto 0;
+  border-radius: 50%;
+  background: #1db954;
+  animation: pulse 1.4s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.45;
+  }
+
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.85);
+    opacity: 0.45;
+  }
+}
