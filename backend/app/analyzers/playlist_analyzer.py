@@ -13,6 +13,7 @@ class PlaylistAnalyzer:
 
         largest_playlist = None
         smallest_playlist = None
+        top_playlists = []
 
         if playlist_counter:
             largest_name, largest_count = playlist_counter.most_common(1)[0]
@@ -21,11 +22,24 @@ class PlaylistAnalyzer:
                 key=lambda item: item[1]
             )
 
-            largest_playlist = {"name": largest_name, "count": largest_count}
-            smallest_playlist = {"name": smallest_name, "count": smallest_count}
+            largest_playlist = {
+                "name": largest_name,
+                "count": largest_count,
+            }
+
+            smallest_playlist = {
+                "name": smallest_name,
+                "count": smallest_count,
+            }
+
+            top_playlists = [
+                {"name": name, "count": count}
+                for name, count in playlist_counter.most_common(10)
+            ]
 
         return {
             "total_playlists": len(playlist_counter),
             "largest_playlist": largest_playlist,
             "smallest_playlist": smallest_playlist,
+            "top_playlists": top_playlists,
         }

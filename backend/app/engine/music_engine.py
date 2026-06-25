@@ -157,6 +157,7 @@ class MusicAnalysisEngine:
     "dominant_artist_percentage": artist_data["dominant_artist_percentage"],
     "largest_playlist": playlist_data["largest_playlist"],
     "smallest_playlist": playlist_data["smallest_playlist"],
+    "top_playlists": playlist_data["top_playlists"],
     "musical_dna": dna_data,
     "smart_insights": smart_insights,
     "daily_discovery": daily_discovery,
