@@ -10,23 +10,25 @@ type Props = {
 
 function PlaylistInsightsCard({ largestPlaylist, smallestPlaylist }: Props) {
   return (
-    <section className="discovery-card">
+    <section className="discovery-card playlist-card">
       <p className="section-label">Playlists</p>
       <h2>Resumen de tus playlists</h2>
 
-      {largestPlaylist && (
-        <p>
-          Playlist más grande: {largestPlaylist.name} — {largestPlaylist.count}{" "}
-          canciones
-        </p>
-      )}
+      <div className="playlist-metrics">
+        <div>
+          <span>📈</span>
+          <p>Playlist más grande</p>
+          <strong>{largestPlaylist?.name ?? "No disponible"}</strong>
+          <small>{largestPlaylist?.count ?? 0} canciones</small>
+        </div>
 
-      {smallestPlaylist && (
-        <p>
-          Playlist más pequeña: {smallestPlaylist.name} —{" "}
-          {smallestPlaylist.count} canciones
-        </p>
-      )}
+        <div>
+          <span>📉</span>
+          <p>Playlist más pequeña</p>
+          <strong>{smallestPlaylist?.name ?? "No disponible"}</strong>
+          <small>{smallestPlaylist?.count ?? 0} canciones</small>
+        </div>
+      </div>
     </section>
   );
 }

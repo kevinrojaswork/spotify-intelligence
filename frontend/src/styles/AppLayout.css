@@ -301,3 +301,32 @@
 .duplicate-item p {
   margin: 4px 0 0;
 }
+
+.playlist-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.playlist-metrics div {
+  border-radius: 20px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.07);
+  display: grid;
+  gap: 8px;
+}
+
+.playlist-metrics span {
+  font-size: 30px;
+}
+
+.playlist-metrics strong {
+  color: white;
+  font-size: 18px;
+}
+
+.playlist-metrics small {
+  color: #1db954;
+  font-weight: 800;
+}
