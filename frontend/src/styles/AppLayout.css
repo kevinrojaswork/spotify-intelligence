@@ -272,3 +272,32 @@
 .insight-item p {
   margin: 0;
 }
+
+.duplicates-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.duplicate-item {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  text-align: left;
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.duplicate-item span {
+  color: #1db954;
+  font-weight: 900;
+}
+
+.duplicate-item strong {
+  color: white;
+}
+
+.duplicate-item p {
+  margin: 4px 0 0;
+}
