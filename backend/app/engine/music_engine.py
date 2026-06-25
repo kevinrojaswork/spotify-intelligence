@@ -129,12 +129,20 @@ class MusicAnalysisEngine:
             playlist_data,
         )
 
+        unique_artists = set()
+        unique_albums = set()
+
+        for track in self.tracks:
+            for artist in track["artists"]:
+                unique_artists.add(artist)
+
+        unique_albums.add(track["album"])
+
         return {
             "total_tracks": len(self.tracks),
             "total_playlists": playlist_data["total_playlists"],
-            "top_artists": artist_data["top_artists"],
-            "top_songs": top_songs,
-            "top_albums": album_data["top_albums"],
+            "total_artists": len(unique_artists),
+            "total_albums": len(unique_albums),
             "duplicate_songs": duplicate_data["duplicate_songs"],
             "dominant_artist": artist_data["dominant_artist"],
             "dominant_artist_percentage": artist_data["dominant_artist_percentage"],

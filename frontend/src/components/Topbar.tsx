@@ -29,7 +29,7 @@ function Topbar() {
       </div>
 
       <a className="connect-button" href={SPOTIFY_AUTH_URL}>
-        {isConnected ? "Spotify conectado ✓" : "Conectar Spotify"}
+        {isConnected ? "Sincronizar Spotify" : "Conectar Spotify"}
       </a>
     </header>
   );

@@ -43,6 +43,8 @@ type MusicalDNA = {
 type DashboardStats = {
   total_tracks: number;
   total_playlists: number;
+  total_artists: number;
+  total_albums: number;
   top_artists: TopItem[];
   top_songs: TopItem[];
   top_albums: TopItem[];
@@ -86,10 +88,10 @@ function Dashboard() {
       />
 
       <StatsGrid
-        totalTracks={stats.total_tracks}
-        totalPlaylists={stats.total_playlists}
-        topArtistsCount={stats.top_artists.length}
-        topAlbumsCount={stats.top_albums.length}
+    totalTracks={stats.total_tracks}
+    totalPlaylists={stats.total_playlists}
+    totalArtists={stats.total_artists}
+    totalAlbums={stats.total_albums}
       />
 
       <MusicalDNACard dna={stats.musical_dna} />

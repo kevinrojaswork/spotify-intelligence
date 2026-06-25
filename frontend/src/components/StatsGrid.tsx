@@ -1,16 +1,17 @@
 type Props = {
   totalTracks: number;
   totalPlaylists: number;
-  topArtistsCount: number;
-  topAlbumsCount: number;
+  totalArtists: number;
+  totalAlbums: number;
 };
 
 function StatsGrid({
   totalTracks,
   totalPlaylists,
-  topArtistsCount,
-  topAlbumsCount,
+  totalArtists,
+  totalAlbums,
 }: Props) {
+
   return (
     <section className="stats-grid">
       <div className="stat-card">
@@ -21,14 +22,14 @@ function StatsGrid({
 
       <div className="stat-card">
         <span>🎤</span>
-        <p>Top artistas</p>
-        <h3>{topArtistsCount}</h3>
+        <p>Artistas destacados</p>
+        <h3>{totalArtists}</h3>
       </div>
 
       <div className="stat-card">
         <span>💿</span>
-        <p>Top álbumes</p>
-        <h3>{topAlbumsCount}</h3>
+        <p>Álbumes destacados</p>
+        <h3>{totalAlbums}</h3>
       </div>
 
       <div className="stat-card">
