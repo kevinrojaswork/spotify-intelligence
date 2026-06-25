@@ -61,24 +61,24 @@ class MusicAnalysisEngine:
 
             playlist_tracks = self.get_all_playlist_tracks(sp, playlist_id)
 
-        for item in playlist_tracks:
-            track = item.get("track")
-            
-            if not track:
-                continue
+            for item in playlist_tracks:
+                track = item.get("track")
 
-        artists = []
+                if not track:
+                    continue
 
-        for a in track.get("artists", []):
-            if a and a.get("name"):
-                artists.append(a["name"])
+                artists = []
 
-        tracks_data.append({
-            "playlist": playlist_name,
-            "track_name": track.get("name", "Sin nombre"),
-            "artists": artists,
-            "album": track["album"]["name"] if track.get("album") else "Sin álbum",
-        })
+                for a in track.get("artists", []):
+                    if a and a.get("name"):
+                        artists.append(a["name"])
+
+                tracks_data.append({
+                    "playlist": playlist_name,
+                    "track_name": track.get("name", "Sin nombre"),
+                    "artists": artists,
+                    "album": track["album"]["name"] if track.get("album") else "Sin álbum",
+                })
 
         init_db()
         clear_tracks()
