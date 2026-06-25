@@ -6,12 +6,19 @@ type DuplicateSong = {
 
 type Props = {
   songs: DuplicateSong[];
+  duplicatePercentage: number;
 };
 
-function DuplicateSongsCard({ songs }: Props) {
+function DuplicateSongsCard({
+  songs,
+  duplicatePercentage,
+}: Props) {
   return (
     <section className="discovery-card duplicates-card">
       <p className="section-label">Canciones duplicadas</p>
+      <p>
+  {duplicatePercentage}% de tu biblioteca aparece en más de una playlist.
+</p>
       <h2>Canciones que aparecen en varias playlists</h2>
 
       {songs.length === 0 ? (

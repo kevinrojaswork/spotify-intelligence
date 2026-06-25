@@ -138,6 +138,11 @@ class MusicAnalysisEngine:
 
             unique_albums.add(track["album"])
 
+            duplicate_percentage = round(
+    (len(duplicate_data["duplicate_songs"]) / len(self.tracks)) * 100,
+    1
+) if self.tracks else 0
+
         return {
     "total_tracks": len(self.tracks),
     "total_playlists": playlist_data["total_playlists"],
@@ -147,6 +152,7 @@ class MusicAnalysisEngine:
     "top_songs": top_songs,
     "top_albums": album_data["top_albums"],
     "duplicate_songs": duplicate_data["duplicate_songs"],
+    "duplicate_percentage": duplicate_percentage,
     "dominant_artist": artist_data["dominant_artist"],
     "dominant_artist_percentage": artist_data["dominant_artist_percentage"],
     "largest_playlist": playlist_data["largest_playlist"],

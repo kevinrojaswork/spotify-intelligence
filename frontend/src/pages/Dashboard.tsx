@@ -49,6 +49,7 @@ type DashboardStats = {
   top_songs: TopItem[];
   top_albums: TopItem[];
   duplicate_songs: DuplicateSong[];
+  duplicate_percentage: number;
   dominant_artist: DominantArtist | null;
   dominant_artist_percentage: number;
   largest_playlist: PlaylistInsight | null;
@@ -130,7 +131,10 @@ function Dashboard() {
         unit="canciones"
       />
 
-      <DuplicateSongsCard songs={stats.duplicate_songs} />
+            <DuplicateSongsCard
+        songs={stats.duplicate_songs}
+        duplicatePercentage={stats.duplicate_percentage}
+      />
     </div>
   );
 }
