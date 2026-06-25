@@ -88,11 +88,11 @@ function Dashboard() {
       />
 
       <StatsGrid
-    totalTracks={stats.total_tracks}
-    totalPlaylists={stats.total_playlists}
-    totalArtists={stats.total_artists}
-    totalAlbums={stats.total_albums}
-      />
+  totalTracks={stats.total_tracks}
+  totalPlaylists={stats.total_playlists}
+  totalArtists={stats.total_artists}
+  totalAlbums={stats.total_albums}
+/>
 
       <MusicalDNACard dna={stats.musical_dna} />
 

@@ -136,23 +136,26 @@ class MusicAnalysisEngine:
             for artist in track["artists"]:
                 unique_artists.add(artist)
 
-        unique_albums.add(track["album"])
+            unique_albums.add(track["album"])
 
         return {
-            "total_tracks": len(self.tracks),
-            "total_playlists": playlist_data["total_playlists"],
-            "total_artists": len(unique_artists),
-            "total_albums": len(unique_albums),
-            "duplicate_songs": duplicate_data["duplicate_songs"],
-            "dominant_artist": artist_data["dominant_artist"],
-            "dominant_artist_percentage": artist_data["dominant_artist_percentage"],
-            "largest_playlist": playlist_data["largest_playlist"],
-            "smallest_playlist": playlist_data["smallest_playlist"],
-            "musical_dna": dna_data,
-            "smart_insights": smart_insights,
-            "daily_discovery": daily_discovery,
-            "last_sync": get_metadata("last_sync"),
-        }
+    "total_tracks": len(self.tracks),
+    "total_playlists": playlist_data["total_playlists"],
+    "total_artists": len(unique_artists),
+    "total_albums": len(unique_albums),
+    "top_artists": artist_data["top_artists"],
+    "top_songs": top_songs,
+    "top_albums": album_data["top_albums"],
+    "duplicate_songs": duplicate_data["duplicate_songs"],
+    "dominant_artist": artist_data["dominant_artist"],
+    "dominant_artist_percentage": artist_data["dominant_artist_percentage"],
+    "largest_playlist": playlist_data["largest_playlist"],
+    "smallest_playlist": playlist_data["smallest_playlist"],
+    "musical_dna": dna_data,
+    "smart_insights": smart_insights,
+    "daily_discovery": daily_discovery,
+    "last_sync": get_metadata("last_sync"),
+}
 
     def get_top_songs(self):
         song_counter = Counter()
