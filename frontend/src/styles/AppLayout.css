@@ -200,3 +200,51 @@
   border-radius: 999px;
   background: linear-gradient(135deg, #1db954, #7cffb2);
 }
+
+.dna-card {
+  background:
+    radial-gradient(circle at top, rgba(29, 185, 84, 0.18), transparent 45%),
+    rgba(255, 255, 255, 0.075);
+}
+
+.dna-score {
+  margin: 26px auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle, rgba(29, 185, 84, 0.18), rgba(29, 185, 84, 0.05)),
+    rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(29, 185, 84, 0.35);
+}
+
+.dna-score span {
+  font-size: 42px;
+  font-weight: 900;
+  color: #1db954;
+}
+
+.dna-score p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.dna-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.dna-grid div {
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.dna-grid strong {
+  font-size: 30px;
+  color: #1db954;
+}

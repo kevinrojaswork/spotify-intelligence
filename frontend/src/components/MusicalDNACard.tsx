@@ -14,17 +14,31 @@ type Props = {
 
 function MusicalDNACard({ dna }: Props) {
   return (
-    <section className="discovery-card">
+    <section className="discovery-card dna-card">
       <p className="section-label">ADN Musical</p>
       <h2>{dna.diversity_label}</h2>
 
       <p>{dna.summary}</p>
 
-      <p>Diversidad musical: {dna.diversity_score}%</p>
+      <div className="dna-score">
+        <span>{dna.diversity_score}%</span>
+        <p>Diversidad musical</p>
+      </div>
+
+      <div className="dna-grid">
+        <div>
+          <strong>{dna.total_unique_artists}</strong>
+          <p>Artistas únicos</p>
+        </div>
+
+        <div>
+          <strong>{dna.duplicate_songs_count}</strong>
+          <p>Canciones duplicadas</p>
+        </div>
+      </div>
+
       <p>{dna.concentration_label}</p>
       <p>{dna.duplicate_label}</p>
-      <p>Artistas únicos: {dna.total_unique_artists}</p>
-      <p>Canciones duplicadas: {dna.duplicate_songs_count}</p>
     </section>
   );
 }
