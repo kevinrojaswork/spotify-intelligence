@@ -102,8 +102,9 @@ function Dashboard() {
       />
 
       <PlaylistInsightsCard
-        largestPlaylist={stats.largest_playlist}
-        smallestPlaylist={stats.smallest_playlist}
+    largestPlaylist={stats.largest_playlist}
+    smallestPlaylist={stats.smallest_playlist}
+    totalTracks={stats.total_tracks}
       />
 
       <TopListCard
