@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+# Spotify Intelligence
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Spotify Intelligence es una aplicación web que analiza una biblioteca de Spotify y genera estadísticas, ADN Musical e insights inteligentes.
 
-Currently, two official plugins are available:
+## Estado
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+MVP v1.0 publicado.
 
-## React Compiler
+## Tecnologías
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Frontend: React, TypeScript, Vite
+- Backend: Python, FastAPI
+- Base de datos: SQLite
+- API: Spotify Web API
+- Deploy frontend: Vercel
+- Deploy backend: Railway
 
-## Expanding the ESLint configuration
+## Funciones actuales
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Login con Spotify
+- Sincronización de playlists
+- Dashboard con datos reales
+- Top artistas
+- Top canciones
+- Top álbumes
+- Canciones duplicadas
+- ADN Musical
+- Insights inteligentes
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Iniciar frontend
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+```bash
+cd frontend
+npm install
+npm run dev
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Iniciar backend
+cd backend
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Variables de entorno del backend
+
+Crear un archivo .env dentro de backend:
+
+SPOTIFY_CLIENT_ID=tu_client_id
+SPOTIFY_CLIENT_SECRET=tu_client_secret
+SPOTIFY_REDIRECT_URI=http://127.0.0.1:8000/auth/callback
+
+Producción
+
+Frontend:
+https://spotify-intelligence.vercel.app
+
+Backend:
+https://spotify-intelligence-production.up.railway.app
+
+Roadmap
+Mejorar diseño móvil
+Agregar gráficos
+Agregar análisis por géneros
+Agregar décadas favoritas
+Agregar recomendaciones
+Integrar IA

@@ -163,3 +163,40 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.top-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.top-list-item {
+  display: grid;
+  gap: 8px;
+}
+
+.top-list-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 700;
+}
+
+.top-list-header strong {
+  color: #1db954;
+  white-space: nowrap;
+}
+
+.top-list-bar {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.top-list-bar div {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1db954, #7cffb2);
+}
