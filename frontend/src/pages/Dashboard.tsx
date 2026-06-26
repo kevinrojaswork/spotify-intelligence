@@ -14,6 +14,8 @@ const API_BASE_URL = "https://spotify-intelligence-production.up.railway.app";
 const SPOTIFY_AUTH_URL =
   "https://accounts.spotify.com/authorize?client_id=920f42a830964ed6bcb6cdd2205004bc&response_type=code&redirect_uri=https%3A%2F%2Fspotify-intelligence-production.up.railway.app%2Fauth%2Fcallback&scope=playlist-read-private+playlist-read-collaborative+user-library-read+user-read-email+user-top-read+user-read-private&show_dialog=true";
 
+type SyncStatus = "idle" | "syncing" | "completed" | "error";
+
 type TopItem = {
   name: string;
   count: number;
@@ -70,6 +72,9 @@ type DashboardStats = {
 function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [syncError, setSyncError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   const reconnectSpotify = () => {
     localStorage.removeItem("spotify_user_id");
@@ -81,29 +86,122 @@ function Dashboard() {
 
     if (!spotifyUserId) {
       setError("No hay una cuenta de Spotify conectada.");
+      setIsLoading(false);
       return;
     }
 
-    fetch(
-      `${API_BASE_URL}/engine/dashboard?spotify_user_id=${encodeURIComponent(
-        spotifyUserId
-      )}`
-    )
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("No se pudo cargar el dashboard.");
+    let intervalId: number | undefined;
+
+    const loadDashboard = async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/engine/dashboard?spotify_user_id=${encodeURIComponent(
+          spotifyUserId
+        )}`
+      );
+
+      if (!response.ok) {
+        throw new Error("No se pudo cargar el dashboard.");
+      }
+
+      const data = await response.json();
+      setStats(data);
+      return data as DashboardStats;
+    };
+
+    const loadSyncStatus = async () => {
+      const response = await fetch(
+        `${API_BASE_URL}/engine/sync-status?spotify_user_id=${encodeURIComponent(
+          spotifyUserId
+        )}`
+      );
+
+      if (!response.ok) {
+        throw new Error("No se pudo revisar el estado de sincronización.");
+      }
+
+      const data = await response.json();
+
+      setSyncStatus(data.status || "idle");
+      setSyncError(data.error || "");
+
+      return data as {
+        status: SyncStatus;
+        error: string;
+      };
+    };
+
+    const checkUntilSyncFinishes = async () => {
+      try {
+        const statusData = await loadSyncStatus();
+
+        if (statusData.status === "completed") {
+          if (intervalId) {
+            window.clearInterval(intervalId);
+          }
+
+          await loadDashboard();
+          setIsLoading(false);
         }
 
-        return res.json();
-      })
-      .then((data) => {
-        setStats(data);
-      })
-      .catch((error) => {
-        console.error("Error cargando dashboard:", error);
+        if (statusData.status === "error") {
+          if (intervalId) {
+            window.clearInterval(intervalId);
+          }
+
+          setError(
+            statusData.error ||
+              "Ocurrió un error mientras sincronizábamos Spotify."
+          );
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error revisando sincronización:", error);
+      }
+    };
+
+    const start = async () => {
+      try {
+        const statusData = await loadSyncStatus();
+
+        try {
+          await loadDashboard();
+        } catch (dashboardError) {
+          console.error("Dashboard todavía no disponible:", dashboardError);
+        }
+
+        setIsLoading(false);
+
+        if (statusData.status === "syncing") {
+          intervalId = window.setInterval(checkUntilSyncFinishes, 4000);
+        }
+      } catch (error) {
+        console.error("Error inicial cargando dashboard:", error);
         setError("No se pudo cargar tu análisis musical.");
-      });
+        setIsLoading(false);
+      }
+    };
+
+    start();
+
+    return () => {
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="dashboard">
+        <section className="discovery-card loading-card">
+          <p className="section-label">Cargando...</p>
+          <h2>Preparando tu análisis musical...</h2>
+          <p>Estamos revisando el estado de tu sincronización con Spotify.</p>
+          <div className="loading-pulse" />
+        </section>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -116,6 +214,8 @@ function Dashboard() {
             el nuevo sistema multiusuario.
           </p>
 
+          {syncError && <p>Error técnico: {syncError}</p>}
+
           <button className="connect-button" onClick={reconnectSpotify}>
             Conectar Spotify nuevamente
           </button>
@@ -124,28 +224,31 @@ function Dashboard() {
     );
   }
 
-  if (!stats) {
+  if (syncStatus === "syncing" && (!stats || stats.total_tracks === 0)) {
     return (
       <div className="dashboard">
         <section className="discovery-card loading-card">
-          <p className="section-label">Cargando...</p>
-          <h2>Analizando tu biblioteca musical...</h2>
+          <p className="section-label">Sincronizando Spotify</p>
+          <h2>Estamos preparando tu análisis musical...</h2>
+          <p>
+            Esto puede tardar un poco la primera vez si tienes muchas playlists.
+            Cuando termine, el dashboard se actualizará automáticamente.
+          </p>
           <div className="loading-pulse" />
         </section>
       </div>
     );
   }
 
-  if (stats.total_tracks === 0) {
+  if (!stats || stats.total_tracks === 0) {
     return (
       <div className="dashboard">
         <section className="discovery-card">
           <p className="section-label">Sin datos todavía</p>
           <h2>No encontramos canciones guardadas para este usuario.</h2>
           <p>
-            Esto puede pasar porque acabamos de cambiar la app al sistema
-            multiusuario. Conecta Spotify nuevamente para reconstruir tu
-            análisis.
+            Conecta Spotify nuevamente para reconstruir tu análisis con el nuevo
+            sistema multiusuario.
           </p>
 
           <button className="connect-button" onClick={reconnectSpotify}>
@@ -158,6 +261,18 @@ function Dashboard() {
 
   return (
     <div className="dashboard">
+      {syncStatus === "syncing" && (
+        <section className="discovery-card loading-card">
+          <p className="section-label">Actualizando Spotify</p>
+          <h2>Estamos actualizando tus datos en segundo plano...</h2>
+          <p>
+            Puedes seguir viendo tu análisis anterior mientras terminamos de
+            sincronizar.
+          </p>
+          <div className="loading-pulse" />
+        </section>
+      )}
+
       <DiscoveryCard
         discovery={stats.daily_discovery}
         lastSync={stats.last_sync}
