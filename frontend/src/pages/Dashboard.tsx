@@ -11,9 +11,6 @@ import SmartInsightsCard from "../components/SmartInsightsCard";
 
 const API_BASE_URL = "https://spotify-intelligence-production.up.railway.app";
 
-const SPOTIFY_AUTH_URL =
-  "https://accounts.spotify.com/authorize?client_id=920f42a830964ed6bcb6cdd2205004bc&response_type=code&redirect_uri=https%3A%2F%2Fspotify-intelligence-production.up.railway.app%2Fauth%2Fcallback&scope=playlist-read-private+playlist-read-collaborative+user-library-read+user-read-email+user-top-read+user-read-private&show_dialog=true";
-
 type SyncStatus = "idle" | "syncing" | "completed" | "error";
 
 type TopItem = {
@@ -76,11 +73,6 @@ function Dashboard() {
   const [syncError, setSyncError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  const reconnectSpotify = () => {
-    localStorage.removeItem("spotify_user_id");
-    window.location.assign(SPOTIFY_AUTH_URL);
-  };
-
   useEffect(() => {
     const spotifyUserId = localStorage.getItem("spotify_user_id");
 
@@ -95,8 +87,8 @@ function Dashboard() {
     const loadDashboard = async () => {
       const response = await fetch(
         `${API_BASE_URL}/dashboard?spotify_user_id=${encodeURIComponent(
-  spotifyUserId
-)}`
+          spotifyUserId
+        )}`
       );
 
       if (!response.ok) {
@@ -111,8 +103,8 @@ function Dashboard() {
     const loadSyncStatus = async () => {
       const response = await fetch(
         `${API_BASE_URL}/sync-status?spotify_user_id=${encodeURIComponent(
-  spotifyUserId
-)}`
+          spotifyUserId
+        )}`
       );
 
       if (!response.ok) {
@@ -196,7 +188,7 @@ function Dashboard() {
         <section className="discovery-card loading-card">
           <p className="section-label">Cargando...</p>
           <h2>Preparando tu análisis musical...</h2>
-          <p>Estamos revisando el estado de tu sincronización con Spotify.</p>
+          <p>Estamos revisando tu conexión con Spotify.</p>
           <div className="loading-pulse" />
         </section>
       </div>
@@ -207,18 +199,14 @@ function Dashboard() {
     return (
       <div className="dashboard">
         <section className="discovery-card">
-          <p className="section-label">Spotify no conectado</p>
+          <p className="section-label">Acción necesaria</p>
           <h2>{error}</h2>
           <p>
-            Necesitamos conectar Spotify nuevamente para guardar tus datos con
-            el nuevo sistema multiusuario.
+            Usa el botón superior para conectar o actualizar Spotify y reconstruir
+            tu análisis musical.
           </p>
 
           {syncError && <p>Error técnico: {syncError}</p>}
-
-          <button className="connect-button" onClick={reconnectSpotify}>
-            Conectar Spotify nuevamente
-          </button>
         </section>
       </div>
     );
@@ -231,8 +219,8 @@ function Dashboard() {
           <p className="section-label">Sincronizando Spotify</p>
           <h2>Estamos preparando tu análisis musical...</h2>
           <p>
-            Esto puede tardar un poco la primera vez si tienes muchas playlists.
-            Cuando termine, el dashboard se actualizará automáticamente.
+            La primera sincronización puede tardar un poco si tienes muchas
+            playlists. Cuando termine, el dashboard se actualizará solo.
           </p>
           <div className="loading-pulse" />
         </section>
@@ -247,13 +235,9 @@ function Dashboard() {
           <p className="section-label">Sin datos todavía</p>
           <h2>No encontramos canciones guardadas para este usuario.</h2>
           <p>
-            Conecta Spotify nuevamente para reconstruir tu análisis con el nuevo
-            sistema multiusuario.
+            Usa el botón superior para conectar Spotify y crear tu análisis
+            musical.
           </p>
-
-          <button className="connect-button" onClick={reconnectSpotify}>
-            Reconectar Spotify
-          </button>
         </section>
       </div>
     );
