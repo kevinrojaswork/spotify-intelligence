@@ -11,32 +11,38 @@ function StatsGrid({
   totalArtists,
   totalAlbums,
 }: Props) {
+  const stats = [
+    {
+      icon: "🎵",
+      label: "Canciones",
+      value: totalTracks,
+    },
+    {
+      icon: "🎤",
+      label: "Artistas únicos",
+      value: totalArtists,
+    },
+    {
+      icon: "💿",
+      label: "Álbumes únicos",
+      value: totalAlbums,
+    },
+    {
+      icon: "📁",
+      label: "Playlists",
+      value: totalPlaylists,
+    },
+  ];
 
   return (
     <section className="stats-grid">
-      <div className="stat-card">
-        <span>🎵</span>
-        <p>Canciones</p>
-        <h3>{totalTracks}</h3>
-      </div>
-
-      <div className="stat-card">
-        <span>🎤</span>
-        <p>Artistas destacados</p>
-        <h3>{totalArtists}</h3>
-      </div>
-
-      <div className="stat-card">
-        <span>💿</span>
-        <p>Álbumes destacados</p>
-        <h3>{totalAlbums}</h3>
-      </div>
-
-      <div className="stat-card">
-        <span>📁</span>
-        <p>Playlists</p>
-        <h3>{totalPlaylists}</h3>
-      </div>
+      {stats.map((stat) => (
+        <div className="stat-card" key={stat.label}>
+          <span className="stat-icon">{stat.icon}</span>
+          <p>{stat.label}</p>
+          <strong>{stat.value}</strong>
+        </div>
+      ))}
     </section>
   );
 }
