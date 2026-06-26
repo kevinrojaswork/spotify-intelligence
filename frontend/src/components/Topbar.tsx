@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 
 const SPOTIFY_AUTH_URL =
-  "https://accounts.spotify.com/authorize?client_id=920f42a830964ed6bcb6cdd2205004bc&response_type=code&redirect_uri=https%3A%2F%2Fspotify-intelligence-production.up.railway.app%2Fauth%2Fcallback&scope=playlist-read-private+playlist-read-collaborative+user-library-read+user-read-email+user-top-read+user-read-private&show_dialog=true";
+  "https://accounts.spotify.com/authorize?client_id=920f42a830964ed6bcb6cdd2205004bc&response_type=code&redirect_uri=https%3A%2F%2Fspotify-intelligence-production.up.railway.app%2Fauth%2Fcallback&scope=playlist-read-private+playlist-read-collaborative+user-library-read+user-read-email+user-top-read+user-read-private";
 
 function Topbar() {
   const [isConnected, setIsConnected] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -21,7 +22,7 @@ function Topbar() {
       setIsConnected(true);
     }
 
-    if (spotifyConnected || spotifyUserId) {
+    if (spotifyConnected || spotifyUserId || params.get("sync")) {
       window.history.replaceState(
         {},
         document.title,
@@ -30,8 +31,8 @@ function Topbar() {
     }
   }, []);
 
-  const reconnectSpotify = () => {
-    localStorage.removeItem("spotify_user_id");
+  const handleSpotifyAction = () => {
+    setIsRedirecting(true);
     window.location.assign(SPOTIFY_AUTH_URL);
   };
 
@@ -45,8 +46,17 @@ function Topbar() {
         <h1>Tu centro de inteligencia musical</h1>
       </div>
 
-      <button className="connect-button" onClick={reconnectSpotify}>
-        {isConnected ? "Reconectar Spotify" : "Conectar Spotify"}
+      <button
+        type="button"
+        className="connect-button"
+        onClick={handleSpotifyAction}
+        disabled={isRedirecting}
+      >
+        {isRedirecting
+          ? "Abriendo Spotify..."
+          : isConnected
+          ? "Actualizar Spotify"
+          : "Conectar Spotify"}
       </button>
     </header>
   );
