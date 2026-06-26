@@ -94,9 +94,9 @@ function Dashboard() {
 
     const loadDashboard = async () => {
       const response = await fetch(
-        `${API_BASE_URL}/engine/dashboard?spotify_user_id=${encodeURIComponent(
-          spotifyUserId
-        )}`
+        `${API_BASE_URL}/dashboard?spotify_user_id=${encodeURIComponent(
+  spotifyUserId
+)}`
       );
 
       if (!response.ok) {
@@ -110,9 +110,9 @@ function Dashboard() {
 
     const loadSyncStatus = async () => {
       const response = await fetch(
-        `${API_BASE_URL}/engine/sync-status?spotify_user_id=${encodeURIComponent(
-          spotifyUserId
-        )}`
+        `${API_BASE_URL}/sync-status?spotify_user_id=${encodeURIComponent(
+  spotifyUserId
+)}`
       );
 
       if (!response.ok) {
