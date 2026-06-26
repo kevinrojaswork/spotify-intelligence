@@ -5,7 +5,20 @@ import Layout from "./components/Layout";
 
 function App() {
   const [started, setStarted] = useState(() => {
-    return window.location.search.includes("spotify_connected=true");
+    const params = new URLSearchParams(window.location.search);
+    const spotifyConnected = params.get("spotify_connected") === "true";
+    const spotifyUserIdFromUrl = params.get("spotify_user_id");
+    const spotifyUserIdFromStorage = localStorage.getItem("spotify_user_id");
+
+    if (spotifyUserIdFromUrl) {
+      localStorage.setItem("spotify_user_id", spotifyUserIdFromUrl);
+    }
+
+    return Boolean(
+      spotifyConnected ||
+      spotifyUserIdFromUrl ||
+      spotifyUserIdFromStorage
+    );
   });
 
   if (!started) {

@@ -16,13 +16,17 @@ def spotify_login():
 
 @router.get("/callback")
 def spotify_callback(code: str):
-    save_token(code)
+    token_data = save_token(code)
 
-    sp = get_spotify_client()
+    spotify_user_id = token_data["spotify_user_id"]
+    sp = get_spotify_client(spotify_user_id)
 
     if sp:
-        engine.sync(sp)
+        engine.sync(sp, spotify_user_id)
 
     return RedirectResponse(
-    url="https://spotify-intelligence.vercel.app/?spotify_connected=true"
-)
+        url=(
+            "https://spotify-intelligence.vercel.app/"
+            f"?spotify_connected=true&spotify_user_id={spotify_user_id}"
+        )
+    )

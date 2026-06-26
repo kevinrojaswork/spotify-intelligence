@@ -6,7 +6,6 @@ from app.database.db import (
     clear_tracks,
     save_tracks,
     get_all_tracks,
-    init_metadata_table,
     save_metadata,
     get_metadata,
 )
@@ -51,14 +50,13 @@ class MusicAnalysisEngine:
 
         return tracks
 
-    def sync(self, sp):
+    def sync(self, sp, spotify_user_id):
         playlists = self.get_all_playlists(sp)
         tracks_data = []
 
         for playlist in playlists:
             playlist_name = playlist["name"]
             playlist_id = playlist["id"]
-
             playlist_tracks = self.get_all_playlist_tracks(sp, playlist_id)
 
             for item in playlist_tracks:
@@ -69,9 +67,9 @@ class MusicAnalysisEngine:
 
                 artists = []
 
-                for a in track.get("artists", []):
-                    if a and a.get("name"):
-                        artists.append(a["name"])
+                for artist in track.get("artists", []):
+                    if artist and artist.get("name"):
+                        artists.append(artist["name"])
 
                 tracks_data.append({
                     "playlist": playlist_name,
@@ -81,12 +79,11 @@ class MusicAnalysisEngine:
                 })
 
         init_db()
-        clear_tracks()
-        save_tracks(tracks_data)
+        clear_tracks(spotify_user_id)
+        save_tracks(spotify_user_id, tracks_data)
 
-        init_metadata_table()
         save_metadata(
-            "last_sync",
+            f"last_sync:{spotify_user_id}",
             datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         )
 
@@ -94,12 +91,13 @@ class MusicAnalysisEngine:
 
         return {
             "message": "Biblioteca sincronizada completamente",
+            "spotify_user_id": spotify_user_id,
             "tracks_loaded": len(tracks_data),
             "playlists_loaded": len(playlists),
         }
 
-    def analyze(self):
-        self.tracks = get_all_tracks()
+    def analyze(self, spotify_user_id):
+        self.tracks = get_all_tracks(spotify_user_id)
 
         artist_data = ArtistAnalyzer(self.tracks).analyze()
         album_data = AlbumAnalyzer(self.tracks).analyze()
@@ -138,31 +136,32 @@ class MusicAnalysisEngine:
 
             unique_albums.add(track["album"])
 
-            duplicate_percentage = round(
-    (len(duplicate_data["duplicate_songs"]) / len(self.tracks)) * 100,
-    1
-) if self.tracks else 0
+        duplicate_percentage = round(
+            (len(duplicate_data["duplicate_songs"]) / len(self.tracks)) * 100,
+            1
+        ) if self.tracks else 0
 
         return {
-    "total_tracks": len(self.tracks),
-    "total_playlists": playlist_data["total_playlists"],
-    "total_artists": len(unique_artists),
-    "total_albums": len(unique_albums),
-    "top_artists": artist_data["top_artists"],
-    "top_songs": top_songs,
-    "top_albums": album_data["top_albums"],
-    "duplicate_songs": duplicate_data["duplicate_songs"],
-    "duplicate_percentage": duplicate_percentage,
-    "dominant_artist": artist_data["dominant_artist"],
-    "dominant_artist_percentage": artist_data["dominant_artist_percentage"],
-    "largest_playlist": playlist_data["largest_playlist"],
-    "smallest_playlist": playlist_data["smallest_playlist"],
-    "top_playlists": playlist_data["top_playlists"],
-    "musical_dna": dna_data,
-    "smart_insights": smart_insights,
-    "daily_discovery": daily_discovery,
-    "last_sync": get_metadata("last_sync"),
-}
+            "spotify_user_id": spotify_user_id,
+            "total_tracks": len(self.tracks),
+            "total_playlists": playlist_data["total_playlists"],
+            "total_artists": len(unique_artists),
+            "total_albums": len(unique_albums),
+            "top_artists": artist_data["top_artists"],
+            "top_songs": top_songs,
+            "top_albums": album_data["top_albums"],
+            "duplicate_songs": duplicate_data["duplicate_songs"],
+            "duplicate_percentage": duplicate_percentage,
+            "dominant_artist": artist_data["dominant_artist"],
+            "dominant_artist_percentage": artist_data["dominant_artist_percentage"],
+            "largest_playlist": playlist_data["largest_playlist"],
+            "smallest_playlist": playlist_data["smallest_playlist"],
+            "top_playlists": playlist_data["top_playlists"],
+            "musical_dna": dna_data,
+            "smart_insights": smart_insights,
+            "daily_discovery": daily_discovery,
+            "last_sync": get_metadata(f"last_sync:{spotify_user_id}"),
+        }
 
     def get_top_songs(self):
         song_counter = Counter()

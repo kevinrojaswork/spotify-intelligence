@@ -9,6 +9,8 @@ import DuplicateSongsCard from "../components/DuplicateSongsCard";
 import MusicalDNACard from "../components/MusicalDNACard";
 import SmartInsightsCard from "../components/SmartInsightsCard";
 
+const API_BASE_URL = "https://spotify-intelligence-production.up.railway.app";
+
 type TopItem = {
   name: string;
   count: number;
@@ -41,6 +43,7 @@ type MusicalDNA = {
 };
 
 type DashboardStats = {
+  spotify_user_id: string;
   total_tracks: number;
   total_playlists: number;
   total_artists: number;
@@ -63,24 +66,63 @@ type DashboardStats = {
 
 function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("https://spotify-intelligence-production.up.railway.app/engine/dashboard")
-      .then((res) => res.json())
-      .then((data) => setStats(data));
+    const spotifyUserId = localStorage.getItem("spotify_user_id");
+
+    if (!spotifyUserId) {
+      setError("No hay usuario de Spotify conectado.");
+      return;
+    }
+
+    fetch(
+      `${API_BASE_URL}/engine/dashboard?spotify_user_id=${encodeURIComponent(
+        spotifyUserId
+      )}`
+    )
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("No se pudo cargar el dashboard.");
+        }
+
+        return res.json();
+      })
+      .then((data) => {
+        setStats(data);
+      })
+      .catch((error) => {
+        console.error("Error cargando dashboard:", error);
+        setError("No se pudo cargar tu análisis musical.");
+      });
   }, []);
 
+  if (error) {
+    return (
+      <div className="dashboard">
+        <section className="discovery-card">
+          <p className="section-label">Error</p>
+          <h2>{error}</h2>
+          <p>
+            Conecta Spotify nuevamente o presiona sincronizar para actualizar
+            tus datos.
+          </p>
+        </section>
+      </div>
+    );
+  }
+
   if (!stats) {
-  return (
-    <div className="dashboard">
-      <section className="discovery-card loading-card">
-        <p className="section-label">Cargando...</p>
-        <h2>Analizando tu biblioteca musical...</h2>
-        <div className="loading-pulse" />
-      </section>
-    </div>
-  );
-}
+    return (
+      <div className="dashboard">
+        <section className="discovery-card loading-card">
+          <p className="section-label">Cargando...</p>
+          <h2>Analizando tu biblioteca musical...</h2>
+          <div className="loading-pulse" />
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard">
@@ -90,11 +132,11 @@ function Dashboard() {
       />
 
       <StatsGrid
-  totalTracks={stats.total_tracks}
-  totalPlaylists={stats.total_playlists}
-  totalArtists={stats.total_artists}
-  totalAlbums={stats.total_albums}
-/>
+        totalTracks={stats.total_tracks}
+        totalPlaylists={stats.total_playlists}
+        totalArtists={stats.total_artists}
+        totalAlbums={stats.total_albums}
+      />
 
       <MusicalDNACard dna={stats.musical_dna} />
 
@@ -106,17 +148,17 @@ function Dashboard() {
       />
 
       <PlaylistInsightsCard
-    largestPlaylist={stats.largest_playlist}
-    smallestPlaylist={stats.smallest_playlist}
-    totalTracks={stats.total_tracks}
+        largestPlaylist={stats.largest_playlist}
+        smallestPlaylist={stats.smallest_playlist}
+        totalTracks={stats.total_tracks}
       />
 
       <TopListCard
-  label="Top playlists"
-  title="Tus playlists más grandes"
-  items={stats.top_playlists}
-  unit="canciones"
-/>
+        label="Top playlists"
+        title="Tus playlists más grandes"
+        items={stats.top_playlists}
+        unit="canciones"
+      />
 
       <TopListCard
         label="Top artistas"
