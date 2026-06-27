@@ -72,9 +72,12 @@ function Dashboard() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [showUpdateSuccess, setShowUpdateSuccess] = useState(false);
 
   useEffect(() => {
     const spotifyUserId = localStorage.getItem("spotify_user_id");
+    const updateStarted =
+      localStorage.getItem("analysis_update_started") === "true";
 
     if (!spotifyUserId) {
       setError("No hay una cuenta de Spotify conectada.");
@@ -122,6 +125,13 @@ function Dashboard() {
       };
     };
 
+    const markUpdateCompleted = () => {
+      if (updateStarted) {
+        setShowUpdateSuccess(true);
+        localStorage.removeItem("analysis_update_started");
+      }
+    };
+
     const checkUntilSyncFinishes = async () => {
       try {
         const statusData = await loadSyncStatus();
@@ -132,6 +142,7 @@ function Dashboard() {
           }
 
           await loadDashboard();
+          markUpdateCompleted();
           setIsLoading(false);
         }
 
@@ -139,6 +150,8 @@ function Dashboard() {
           if (intervalId) {
             window.clearInterval(intervalId);
           }
+
+          localStorage.removeItem("analysis_update_started");
 
           setError(
             statusData.error ||
@@ -161,11 +174,23 @@ function Dashboard() {
           console.error("Dashboard todavía no disponible:", dashboardError);
         }
 
-        setIsLoading(false);
+        if (statusData.status === "completed") {
+          markUpdateCompleted();
+        }
 
         if (statusData.status === "syncing") {
           intervalId = window.setInterval(checkUntilSyncFinishes, 4000);
         }
+
+        if (statusData.status === "error") {
+          localStorage.removeItem("analysis_update_started");
+          setError(
+            statusData.error ||
+              "Ocurrió un error mientras sincronizábamos Spotify."
+          );
+        }
+
+        setIsLoading(false);
       } catch (error) {
         console.error("Error inicial cargando dashboard:", error);
         setError("No se pudo cargar tu análisis musical.");
@@ -247,13 +272,21 @@ function Dashboard() {
     <div className="dashboard">
       {syncStatus === "syncing" && (
         <section className="discovery-card loading-card">
-          <p className="section-label">Actualizando Spotify</p>
+          <p className="section-label">Actualizando análisis</p>
           <h2>Estamos actualizando tus datos en segundo plano...</h2>
           <p>
             Puedes seguir viendo tu análisis anterior mientras terminamos de
-            sincronizar.
+            sincronizar tus playlists.
           </p>
           <div className="loading-pulse" />
+        </section>
+      )}
+
+      {showUpdateSuccess && syncStatus === "completed" && (
+        <section className="discovery-card">
+          <p className="section-label">Análisis actualizado</p>
+          <h2>Tu análisis musical se actualizó correctamente.</h2>
+          <p>Los datos que ves abajo ya corresponden a la última sincronización.</p>
         </section>
       )}
 

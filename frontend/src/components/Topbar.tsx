@@ -30,6 +30,7 @@ function Topbar() {
 
     if (spotifyUserIdFromUrl) {
       localStorage.setItem("spotify_user_id", spotifyUserIdFromUrl);
+      localStorage.setItem("analysis_update_started", "true");
     }
 
     const savedSpotifyUserId = localStorage.getItem("spotify_user_id");
@@ -86,6 +87,7 @@ function Topbar() {
 
     try {
       setIsWorking(true);
+      localStorage.setItem("analysis_update_started", "true");
 
       const response = await fetch(
         `${API_BASE_URL}/load?spotify_user_id=${encodeURIComponent(
@@ -94,6 +96,7 @@ function Topbar() {
       );
 
       if (!response.ok) {
+        localStorage.removeItem("analysis_update_started");
         connectSpotify();
         return;
       }
@@ -101,6 +104,7 @@ function Topbar() {
       window.location.reload();
     } catch (error) {
       console.error("Error actualizando análisis:", error);
+      localStorage.removeItem("analysis_update_started");
       connectSpotify();
     } finally {
       setIsWorking(false);
@@ -109,6 +113,7 @@ function Topbar() {
 
   const changeAccount = () => {
     localStorage.removeItem("spotify_user_id");
+    localStorage.removeItem("analysis_update_started");
     setConnectedUser(null);
     setIsWorking(true);
     window.location.assign(SPOTIFY_CHANGE_ACCOUNT_URL);
