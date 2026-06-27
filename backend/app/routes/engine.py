@@ -25,7 +25,7 @@ def sync_user_in_background(spotify_user_id: str):
             save_metadata(f"sync_status:{spotify_user_id}", "error")
             save_metadata(
                 f"sync_error:{spotify_user_id}",
-                "No se pudo crear el cliente de Spotify."
+                "Necesitas conectar Spotify nuevamente."
             )
             return
 
@@ -52,6 +52,22 @@ def load_engine(
             detail="No hay usuario de Spotify conectado."
         )
 
+    init_db()
+
+    sp = get_spotify_client(user_id)
+
+    if not sp:
+        save_metadata(f"sync_status:{user_id}", "error")
+        save_metadata(
+            f"sync_error:{user_id}",
+            "Tu sesión de Spotify expiró. Conecta Spotify nuevamente."
+        )
+
+        raise HTTPException(
+            status_code=401,
+            detail="Tu sesión de Spotify expiró. Conecta Spotify nuevamente."
+        )
+
     current_status = get_metadata(f"sync_status:{user_id}")
 
     if current_status == "syncing":
@@ -61,7 +77,6 @@ def load_engine(
             "status": "syncing",
         }
 
-    init_db()
     save_metadata(f"sync_status:{user_id}", "syncing")
     save_metadata(f"sync_error:{user_id}", "")
 
