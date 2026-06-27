@@ -40,10 +40,15 @@ function Topbar() {
     <header className="topbar">
       <div>
         <p className="topbar-label">
-          {isConnected ? "Spotify conectado" : "Bienvenido"}
+          {isConnected ? "Spotify conectado" : "Conecta tu cuenta"}
         </p>
 
         <h1>Tu centro de inteligencia musical</h1>
+
+        <p className="topbar-description">
+          Analiza tus playlists, artistas, álbumes y patrones musicales desde
+          tu cuenta de Spotify.
+        </p>
       </div>
 
       <button
@@ -55,7 +60,7 @@ function Topbar() {
         {isRedirecting
           ? "Abriendo Spotify..."
           : isConnected
-          ? "Actualizar Spotify"
+          ? "Actualizar análisis"
           : "Conectar Spotify"}
       </button>
     </header>
