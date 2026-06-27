@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 
+const API_BASE_URL = "https://spotify-intelligence-production.up.railway.app";
+
 const SPOTIFY_AUTH_URL =
   "https://accounts.spotify.com/authorize?client_id=920f42a830964ed6bcb6cdd2205004bc&response_type=code&redirect_uri=https%3A%2F%2Fspotify-intelligence-production.up.railway.app%2Fauth%2Fcallback&scope=playlist-read-private+playlist-read-collaborative+user-library-read+user-read-email+user-top-read+user-read-private";
 
 function Topbar() {
   const [isConnected, setIsConnected] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -31,9 +33,48 @@ function Topbar() {
     }
   }, []);
 
-  const handleSpotifyAction = () => {
-    setIsRedirecting(true);
+  const connectSpotify = () => {
+    setIsWorking(true);
     window.location.assign(SPOTIFY_AUTH_URL);
+  };
+
+  const updateAnalysis = async () => {
+    const spotifyUserId = localStorage.getItem("spotify_user_id");
+
+    if (!spotifyUserId) {
+      connectSpotify();
+      return;
+    }
+
+    try {
+      setIsWorking(true);
+
+      const response = await fetch(
+        `${API_BASE_URL}/load?spotify_user_id=${encodeURIComponent(
+          spotifyUserId
+        )}`
+      );
+
+      if (!response.ok) {
+        connectSpotify();
+        return;
+      }
+
+      window.location.reload();
+    } catch (error) {
+      console.error("Error actualizando análisis:", error);
+      connectSpotify();
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  const handleSpotifyAction = () => {
+    if (isConnected) {
+      updateAnalysis();
+    } else {
+      connectSpotify();
+    }
   };
 
   return (
@@ -55,10 +96,12 @@ function Topbar() {
         type="button"
         className="connect-button"
         onClick={handleSpotifyAction}
-        disabled={isRedirecting}
+        disabled={isWorking}
       >
-        {isRedirecting
-          ? "Abriendo Spotify..."
+        {isWorking
+          ? isConnected
+            ? "Actualizando..."
+            : "Abriendo Spotify..."
           : isConnected
           ? "Actualizar análisis"
           : "Conectar Spotify"}
