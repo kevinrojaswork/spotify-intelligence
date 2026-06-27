@@ -1,19 +1,49 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 
 from app.services.spotify_service import (
     get_spotify_client,
     get_current_spotify_user_id,
 )
 from app.engine.music_engine import engine
-from app.database.db import get_metadata
+from app.database.db import init_db, get_metadata, save_metadata
 
 router = APIRouter()
 
 
+def sync_user_in_background(spotify_user_id: str):
+    try:
+        init_db()
+
+        save_metadata(f"sync_status:{spotify_user_id}", "syncing")
+        save_metadata(f"sync_error:{spotify_user_id}", "")
+
+        sp = get_spotify_client(spotify_user_id)
+
+        if not sp:
+            save_metadata(f"sync_status:{spotify_user_id}", "error")
+            save_metadata(
+                f"sync_error:{spotify_user_id}",
+                "No se pudo crear el cliente de Spotify."
+            )
+            return
+
+        engine.sync(sp, spotify_user_id)
+
+        save_metadata(f"sync_status:{spotify_user_id}", "completed")
+        save_metadata(f"sync_error:{spotify_user_id}", "")
+
+    except Exception as error:
+        save_metadata(f"sync_status:{spotify_user_id}", "error")
+        save_metadata(f"sync_error:{spotify_user_id}", str(error))
+
+
 @router.get("/load")
-def load_engine(spotify_user_id: Optional[str] = None):
+def load_engine(
+    background_tasks: BackgroundTasks,
+    spotify_user_id: Optional[str] = None,
+):
     user_id = spotify_user_id or get_current_spotify_user_id()
 
     if not user_id:
@@ -22,15 +52,26 @@ def load_engine(spotify_user_id: Optional[str] = None):
             detail="No hay usuario de Spotify conectado."
         )
 
-    sp = get_spotify_client(user_id)
+    current_status = get_metadata(f"sync_status:{user_id}")
 
-    if not sp:
-        raise HTTPException(
-            status_code=401,
-            detail="No se pudo obtener el cliente de Spotify para este usuario."
-        )
+    if current_status == "syncing":
+        return {
+            "message": "La sincronización ya está en progreso.",
+            "spotify_user_id": user_id,
+            "status": "syncing",
+        }
 
-    return engine.sync(sp, user_id)
+    init_db()
+    save_metadata(f"sync_status:{user_id}", "syncing")
+    save_metadata(f"sync_error:{user_id}", "")
+
+    background_tasks.add_task(sync_user_in_background, user_id)
+
+    return {
+        "message": "Sincronización iniciada en segundo plano.",
+        "spotify_user_id": user_id,
+        "status": "syncing",
+    }
 
 
 @router.get("/dashboard")
