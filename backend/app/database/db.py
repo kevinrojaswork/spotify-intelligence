@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+from datetime import datetime
 
 DB_PATH = Path(__file__).resolve().parent / "spotify_intelligence.db"
 
@@ -39,11 +40,22 @@ def init_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS spotify_users (
+            spotify_user_id TEXT PRIMARY KEY,
+            display_name TEXT,
+            email TEXT,
+            image_url TEXT,
+            last_login TEXT
+        )
+    """)
+
     conn.commit()
     conn.close()
 
     migrate_tracks_table()
     migrate_spotify_tokens_table()
+    migrate_spotify_users_table()
 
 
 def migrate_tracks_table():
@@ -84,6 +96,39 @@ def migrate_spotify_tokens_table():
 
     if "expires_at" not in columns:
         cursor.execute("ALTER TABLE spotify_tokens ADD COLUMN expires_at INTEGER")
+
+    conn.commit()
+    conn.close()
+
+
+def migrate_spotify_users_table():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS spotify_users (
+            spotify_user_id TEXT PRIMARY KEY,
+            display_name TEXT,
+            email TEXT,
+            image_url TEXT,
+            last_login TEXT
+        )
+    """)
+
+    cursor.execute("PRAGMA table_info(spotify_users)")
+    columns = [column[1] for column in cursor.fetchall()]
+
+    if "display_name" not in columns:
+        cursor.execute("ALTER TABLE spotify_users ADD COLUMN display_name TEXT")
+
+    if "email" not in columns:
+        cursor.execute("ALTER TABLE spotify_users ADD COLUMN email TEXT")
+
+    if "image_url" not in columns:
+        cursor.execute("ALTER TABLE spotify_users ADD COLUMN image_url TEXT")
+
+    if "last_login" not in columns:
+        cursor.execute("ALTER TABLE spotify_users ADD COLUMN last_login TEXT")
 
     conn.commit()
     conn.close()
@@ -269,3 +314,64 @@ def delete_spotify_token(spotify_user_id):
 
     conn.commit()
     conn.close()
+
+
+def save_spotify_user(
+    spotify_user_id,
+    display_name=None,
+    email=None,
+    image_url=None,
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO spotify_users (
+            spotify_user_id,
+            display_name,
+            email,
+            image_url,
+            last_login
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            spotify_user_id,
+            display_name,
+            email,
+            image_url,
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        )
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_spotify_user(spotify_user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT spotify_user_id, display_name, email, image_url, last_login
+        FROM spotify_users
+        WHERE spotify_user_id = ?
+        """,
+        (spotify_user_id,)
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "spotify_user_id": row[0],
+        "display_name": row[1],
+        "email": row[2],
+        "image_url": row[3],
+        "last_login": row[4],
+    }

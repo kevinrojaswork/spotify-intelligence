@@ -7,9 +7,24 @@ from app.services.spotify_service import (
     get_current_spotify_user_id,
 )
 from app.engine.music_engine import engine
-from app.database.db import init_db, get_metadata, save_metadata
+from app.database.db import (
+    init_db,
+    get_metadata,
+    save_metadata,
+    get_spotify_user,
+    save_spotify_user,
+)
 
 router = APIRouter()
+
+
+def get_user_image_url(user):
+    images = user.get("images", [])
+
+    if images and len(images) > 0:
+        return images[0].get("url")
+
+    return None
 
 
 def sync_user_in_background(spotify_user_id: str):
@@ -120,3 +135,47 @@ def get_sync_status(spotify_user_id: Optional[str] = None):
         "status": status,
         "error": error,
     }
+
+
+@router.get("/me")
+def get_connected_user(spotify_user_id: Optional[str] = None):
+    user_id = spotify_user_id or get_current_spotify_user_id()
+
+    if not user_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No hay usuario de Spotify conectado."
+        )
+
+    init_db()
+
+    saved_user = get_spotify_user(user_id)
+
+    if saved_user:
+        return saved_user
+
+    sp = get_spotify_client(user_id)
+
+    if not sp:
+        return {
+            "spotify_user_id": user_id,
+            "display_name": user_id,
+            "email": None,
+            "image_url": None,
+            "last_login": None,
+        }
+
+    user = sp.current_user()
+
+    display_name = user.get("display_name") or user_id
+    email = user.get("email")
+    image_url = get_user_image_url(user)
+
+    save_spotify_user(
+        spotify_user_id=user_id,
+        display_name=display_name,
+        email=email,
+        image_url=image_url,
+    )
+
+    return get_spotify_user(user_id)

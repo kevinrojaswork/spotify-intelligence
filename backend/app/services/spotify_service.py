@@ -6,6 +6,7 @@ from app.database.db import (
     init_db,
     save_spotify_token,
     get_spotify_token,
+    save_spotify_user,
 )
 
 
@@ -20,6 +21,15 @@ def get_expires_at(token_info):
 
     expires_in = token_info.get("expires_in", 3600)
     return int(time.time()) + int(expires_in)
+
+
+def get_user_image_url(user):
+    images = user.get("images", [])
+
+    if images and len(images) > 0:
+        return images[0].get("url")
+
+    return None
 
 
 def save_token(code: str):
@@ -40,6 +50,9 @@ def save_token(code: str):
     user = sp.current_user()
 
     spotify_user_id = user["id"]
+    display_name = user.get("display_name") or spotify_user_id
+    email = user.get("email")
+    image_url = get_user_image_url(user)
 
     save_spotify_token(
         spotify_user_id=spotify_user_id,
@@ -48,13 +61,21 @@ def save_token(code: str):
         expires_at=expires_at,
     )
 
+    save_spotify_user(
+        spotify_user_id=spotify_user_id,
+        display_name=display_name,
+        email=email,
+        image_url=image_url,
+    )
+
     current_spotify_user_id = spotify_user_id
 
     return {
         "access_token": access_token,
         "spotify_user_id": spotify_user_id,
-        "display_name": user.get("display_name"),
-        "email": user.get("email"),
+        "display_name": display_name,
+        "email": email,
+        "image_url": image_url,
     }
 
 
