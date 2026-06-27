@@ -5,6 +5,9 @@ const API_BASE_URL = "https://spotify-intelligence-production.up.railway.app";
 const SPOTIFY_AUTH_URL =
   "https://accounts.spotify.com/authorize?client_id=920f42a830964ed6bcb6cdd2205004bc&response_type=code&redirect_uri=https%3A%2F%2Fspotify-intelligence-production.up.railway.app%2Fauth%2Fcallback&scope=playlist-read-private+playlist-read-collaborative+user-library-read+user-read-email+user-top-read+user-read-private";
 
+const SPOTIFY_CHANGE_ACCOUNT_URL =
+  "https://accounts.spotify.com/authorize?client_id=920f42a830964ed6bcb6cdd2205004bc&response_type=code&redirect_uri=https%3A%2F%2Fspotify-intelligence-production.up.railway.app%2Fauth%2Fcallback&scope=playlist-read-private+playlist-read-collaborative+user-library-read+user-read-email+user-top-read+user-read-private&show_dialog=true";
+
 function Topbar() {
   const [isConnected, setIsConnected] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
@@ -69,6 +72,12 @@ function Topbar() {
     }
   };
 
+  const changeAccount = () => {
+    localStorage.removeItem("spotify_user_id");
+    setIsWorking(true);
+    window.location.assign(SPOTIFY_CHANGE_ACCOUNT_URL);
+  };
+
   const handleSpotifyAction = () => {
     if (isConnected) {
       updateAnalysis();
@@ -92,20 +101,33 @@ function Topbar() {
         </p>
       </div>
 
-      <button
-        type="button"
-        className="connect-button"
-        onClick={handleSpotifyAction}
-        disabled={isWorking}
-      >
-        {isWorking
-          ? isConnected
-            ? "Actualizando..."
-            : "Abriendo Spotify..."
-          : isConnected
-          ? "Actualizar análisis"
-          : "Conectar Spotify"}
-      </button>
+      <div className="topbar-actions">
+        <button
+          type="button"
+          className="connect-button"
+          onClick={handleSpotifyAction}
+          disabled={isWorking}
+        >
+          {isWorking
+            ? isConnected
+              ? "Actualizando..."
+              : "Abriendo Spotify..."
+            : isConnected
+            ? "Actualizar análisis"
+            : "Conectar Spotify"}
+        </button>
+
+        {isConnected && (
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={changeAccount}
+            disabled={isWorking}
+          >
+            Cambiar cuenta
+          </button>
+        )}
+      </div>
     </header>
   );
 }
