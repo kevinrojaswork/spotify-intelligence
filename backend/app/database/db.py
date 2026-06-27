@@ -30,10 +30,20 @@ def init_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS spotify_tokens (
+            spotify_user_id TEXT PRIMARY KEY,
+            access_token TEXT,
+            refresh_token TEXT,
+            expires_at INTEGER
+        )
+    """)
+
     conn.commit()
     conn.close()
 
     migrate_tracks_table()
+    migrate_spotify_tokens_table()
 
 
 def migrate_tracks_table():
@@ -45,6 +55,35 @@ def migrate_tracks_table():
 
     if "spotify_user_id" not in columns:
         cursor.execute("ALTER TABLE tracks ADD COLUMN spotify_user_id TEXT")
+
+    conn.commit()
+    conn.close()
+
+
+def migrate_spotify_tokens_table():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS spotify_tokens (
+            spotify_user_id TEXT PRIMARY KEY,
+            access_token TEXT,
+            refresh_token TEXT,
+            expires_at INTEGER
+        )
+    """)
+
+    cursor.execute("PRAGMA table_info(spotify_tokens)")
+    columns = [column[1] for column in cursor.fetchall()]
+
+    if "access_token" not in columns:
+        cursor.execute("ALTER TABLE spotify_tokens ADD COLUMN access_token TEXT")
+
+    if "refresh_token" not in columns:
+        cursor.execute("ALTER TABLE spotify_tokens ADD COLUMN refresh_token TEXT")
+
+    if "expires_at" not in columns:
+        cursor.execute("ALTER TABLE spotify_tokens ADD COLUMN expires_at INTEGER")
 
     conn.commit()
     conn.close()
@@ -147,3 +186,86 @@ def get_metadata(key):
     conn.close()
 
     return row[0] if row else None
+
+
+def save_spotify_token(
+    spotify_user_id,
+    access_token,
+    refresh_token,
+    expires_at,
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT refresh_token
+        FROM spotify_tokens
+        WHERE spotify_user_id = ?
+        """,
+        (spotify_user_id,)
+    )
+
+    existing_row = cursor.fetchone()
+    existing_refresh_token = existing_row[0] if existing_row else None
+    final_refresh_token = refresh_token or existing_refresh_token
+
+    cursor.execute(
+        """
+        INSERT OR REPLACE INTO spotify_tokens (
+            spotify_user_id,
+            access_token,
+            refresh_token,
+            expires_at
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            spotify_user_id,
+            access_token,
+            final_refresh_token,
+            expires_at,
+        )
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_spotify_token(spotify_user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT access_token, refresh_token, expires_at
+        FROM spotify_tokens
+        WHERE spotify_user_id = ?
+        """,
+        (spotify_user_id,)
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "access_token": row[0],
+        "refresh_token": row[1],
+        "expires_at": row[2],
+    }
+
+
+def delete_spotify_token(spotify_user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM spotify_tokens WHERE spotify_user_id = ?",
+        (spotify_user_id,)
+    )
+
+    conn.commit()
+    conn.close()
