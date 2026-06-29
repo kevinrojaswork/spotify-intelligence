@@ -13,6 +13,7 @@ from app.database.db import (
     save_metadata,
     get_spotify_user,
     save_spotify_user,
+    get_user_playlists,
 )
 
 router = APIRouter()
@@ -105,7 +106,10 @@ def load_engine(
 
 
 @router.get("/dashboard")
-def get_dashboard(spotify_user_id: Optional[str] = None):
+def get_dashboard(
+    spotify_user_id: Optional[str] = None,
+    playlist_id: Optional[str] = None,
+):
     user_id = spotify_user_id or get_current_spotify_user_id()
 
     if not user_id:
@@ -114,7 +118,30 @@ def get_dashboard(spotify_user_id: Optional[str] = None):
             detail="No hay usuario de Spotify conectado."
         )
 
-    return engine.analyze(user_id)
+    return engine.analyze(
+        spotify_user_id=user_id,
+        spotify_playlist_id=playlist_id,
+    )
+
+
+@router.get("/playlists")
+def get_playlists(spotify_user_id: Optional[str] = None):
+    user_id = spotify_user_id or get_current_spotify_user_id()
+
+    if not user_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No hay usuario de Spotify conectado."
+        )
+
+    init_db()
+
+    playlists = get_user_playlists(user_id)
+
+    return {
+        "spotify_user_id": user_id,
+        "playlists": playlists,
+    }
 
 
 @router.get("/sync-status")

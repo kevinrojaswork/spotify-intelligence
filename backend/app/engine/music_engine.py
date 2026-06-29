@@ -57,6 +57,7 @@ class MusicAnalysisEngine:
         for playlist in playlists:
             playlist_name = playlist["name"]
             playlist_id = playlist["id"]
+
             playlist_tracks = self.get_all_playlist_tracks(sp, playlist_id)
 
             for item in playlist_tracks:
@@ -72,6 +73,7 @@ class MusicAnalysisEngine:
                         artists.append(artist["name"])
 
                 tracks_data.append({
+                    "spotify_playlist_id": playlist_id,
                     "playlist": playlist_name,
                     "track_name": track.get("name", "Sin nombre"),
                     "artists": artists,
@@ -96,8 +98,11 @@ class MusicAnalysisEngine:
             "playlists_loaded": len(playlists),
         }
 
-    def analyze(self, spotify_user_id):
-        self.tracks = get_all_tracks(spotify_user_id)
+    def analyze(self, spotify_user_id, spotify_playlist_id=None):
+        self.tracks = get_all_tracks(
+            spotify_user_id,
+            spotify_playlist_id=spotify_playlist_id
+        )
 
         artist_data = ArtistAnalyzer(self.tracks).analyze()
         album_data = AlbumAnalyzer(self.tracks).analyze()
@@ -143,6 +148,7 @@ class MusicAnalysisEngine:
 
         return {
             "spotify_user_id": spotify_user_id,
+            "spotify_playlist_id": spotify_playlist_id,
             "total_tracks": len(self.tracks),
             "total_playlists": playlist_data["total_playlists"],
             "total_artists": len(unique_artists),

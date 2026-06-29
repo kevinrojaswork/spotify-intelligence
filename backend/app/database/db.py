@@ -17,6 +17,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS tracks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             spotify_user_id TEXT,
+            spotify_playlist_id TEXT,
             playlist TEXT,
             track_name TEXT,
             artists TEXT,
@@ -67,6 +68,9 @@ def migrate_tracks_table():
 
     if "spotify_user_id" not in columns:
         cursor.execute("ALTER TABLE tracks ADD COLUMN spotify_user_id TEXT")
+
+    if "spotify_playlist_id" not in columns:
+        cursor.execute("ALTER TABLE tracks ADD COLUMN spotify_playlist_id TEXT")
 
     conn.commit()
     conn.close()
@@ -156,15 +160,17 @@ def save_tracks(spotify_user_id, tracks):
             """
             INSERT INTO tracks (
                 spotify_user_id,
+                spotify_playlist_id,
                 playlist,
                 track_name,
                 artists,
                 album
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 spotify_user_id,
+                track.get("spotify_playlist_id"),
                 track["playlist"],
                 track["track_name"],
                 ", ".join(track["artists"]),
@@ -176,18 +182,29 @@ def save_tracks(spotify_user_id, tracks):
     conn.close()
 
 
-def get_all_tracks(spotify_user_id):
+def get_all_tracks(spotify_user_id, spotify_playlist_id=None):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        SELECT playlist, track_name, artists, album
-        FROM tracks
-        WHERE spotify_user_id = ?
-        """,
-        (spotify_user_id,)
-    )
+    if spotify_playlist_id:
+        cursor.execute(
+            """
+            SELECT spotify_playlist_id, playlist, track_name, artists, album
+            FROM tracks
+            WHERE spotify_user_id = ?
+            AND spotify_playlist_id = ?
+            """,
+            (spotify_user_id, spotify_playlist_id)
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT spotify_playlist_id, playlist, track_name, artists, album
+            FROM tracks
+            WHERE spotify_user_id = ?
+            """,
+            (spotify_user_id,)
+        )
 
     rows = cursor.fetchall()
     conn.close()
@@ -196,13 +213,48 @@ def get_all_tracks(spotify_user_id):
 
     for row in rows:
         tracks.append({
-            "playlist": row[0],
-            "track_name": row[1],
-            "artists": row[2].split(", ") if row[2] else [],
-            "album": row[3],
+            "spotify_playlist_id": row[0],
+            "playlist": row[1],
+            "track_name": row[2],
+            "artists": row[3].split(", ") if row[3] else [],
+            "album": row[4],
         })
 
     return tracks
+
+
+def get_user_playlists(spotify_user_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            spotify_playlist_id,
+            playlist,
+            COUNT(*) as total_tracks
+        FROM tracks
+        WHERE spotify_user_id = ?
+        AND spotify_playlist_id IS NOT NULL
+        GROUP BY spotify_playlist_id, playlist
+        ORDER BY total_tracks DESC
+        """,
+        (spotify_user_id,)
+    )
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    playlists = []
+
+    for row in rows:
+        playlists.append({
+            "spotify_playlist_id": row[0],
+            "name": row[1],
+            "total_tracks": row[2],
+        })
+
+    return playlists
 
 
 def save_metadata(key, value):
