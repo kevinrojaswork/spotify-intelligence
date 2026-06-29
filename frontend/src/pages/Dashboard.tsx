@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 
 import DiscoveryCard from "../components/DiscoveryCard";
 import StatsGrid from "../components/StatsGrid";
@@ -88,6 +88,26 @@ function Dashboard() {
     return localStorage.getItem("spotify_user_id");
   };
 
+  const resolveValidPlaylistId = (
+    storedPlaylistId: string,
+    playlistList: PlaylistOption[]
+  ) => {
+    if (!storedPlaylistId) {
+      return "";
+    }
+
+    const playlistStillExists = playlistList.some(
+      (playlist) => playlist.spotify_playlist_id === storedPlaylistId
+    );
+
+    if (!playlistStillExists) {
+      localStorage.removeItem("selected_playlist_id");
+      return "";
+    }
+
+    return storedPlaylistId;
+  };
+
   const loadDashboard = async (
     spotifyUserId: string,
     playlistId?: string
@@ -123,7 +143,11 @@ function Dashboard() {
     }
 
     const data = await response.json();
-    setPlaylists(data.playlists || []);
+    const playlistList = data.playlists || [];
+
+    setPlaylists(playlistList);
+
+    return playlistList as PlaylistOption[];
   };
 
   const loadSyncStatus = async (spotifyUserId: string) => {
@@ -160,8 +184,6 @@ function Dashboard() {
       return;
     }
 
-    setSelectedPlaylistId(storedPlaylistId);
-
     let intervalId: number | undefined;
 
     const markUpdateCompleted = () => {
@@ -169,6 +191,18 @@ function Dashboard() {
         setShowUpdateSuccess(true);
         localStorage.removeItem("analysis_update_started");
       }
+    };
+
+    const loadValidDashboard = async () => {
+      const playlistList = await loadPlaylists(spotifyUserId);
+      const validPlaylistId = resolveValidPlaylistId(
+        storedPlaylistId,
+        playlistList
+      );
+
+      setSelectedPlaylistId(validPlaylistId);
+
+      await loadDashboard(spotifyUserId, validPlaylistId);
     };
 
     const checkUntilSyncFinishes = async () => {
@@ -180,8 +214,7 @@ function Dashboard() {
             window.clearInterval(intervalId);
           }
 
-          await loadPlaylists(spotifyUserId);
-          await loadDashboard(spotifyUserId, storedPlaylistId);
+          await loadValidDashboard();
           markUpdateCompleted();
           setIsLoading(false);
         }
@@ -209,8 +242,7 @@ function Dashboard() {
         const statusData = await loadSyncStatus(spotifyUserId);
 
         try {
-          await loadPlaylists(spotifyUserId);
-          await loadDashboard(spotifyUserId, storedPlaylistId);
+          await loadValidDashboard();
         } catch (dashboardError) {
           console.error("Dashboard todavía no disponible:", dashboardError);
         }
@@ -249,7 +281,7 @@ function Dashboard() {
   }, []);
 
   const handlePlaylistChange = async (
-    event: React.ChangeEvent<HTMLSelectElement>
+    event: ChangeEvent<HTMLSelectElement>
   ) => {
     const newPlaylistId = event.target.value;
     const spotifyUserId = getSpotifyUserId();
@@ -351,43 +383,43 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <section className="analysis-scope-card">
-  <div>
-    <p className="section-label">Modo de análisis</p>
-    <h2>Analizando: {currentScopeLabel}</h2>
-    <p>
-      Puedes analizar toda tu biblioteca o enfocarte en una playlist
-      específica.
-    </p>
+        <div>
+          <p className="section-label">Modo de análisis</p>
+          <h2>Analizando: {currentScopeLabel}</h2>
+          <p>
+            Puedes analizar toda tu biblioteca o enfocarte en una playlist
+            específica.
+          </p>
 
-    <span className="playlist-count-label">
-      {playlists.length} playlists disponibles
-    </span>
-  </div>
+          <span className="playlist-count-label">
+            {playlists.length} playlists disponibles
+          </span>
+        </div>
 
-  <div className="playlist-selector-wrapper">
-    <label htmlFor="playlist-selector">Seleccionar análisis</label>
+        <div className="playlist-selector-wrapper">
+          <label htmlFor="playlist-selector">Seleccionar análisis</label>
 
-    <select
-      id="playlist-selector"
-      value={selectedPlaylistId}
-      onChange={handlePlaylistChange}
-      disabled={isChangingScope}
-    >
-      <option value="">Toda mi biblioteca</option>
+          <select
+            id="playlist-selector"
+            value={selectedPlaylistId}
+            onChange={handlePlaylistChange}
+            disabled={isChangingScope}
+          >
+            <option value="">Toda mi biblioteca</option>
 
-      {playlists.map((playlist) => (
-        <option
-          key={playlist.spotify_playlist_id}
-          value={playlist.spotify_playlist_id}
-        >
-          {playlist.name} — {playlist.total_tracks} canciones
-        </option>
-      ))}
-    </select>
+            {playlists.map((playlist) => (
+              <option
+                key={playlist.spotify_playlist_id}
+                value={playlist.spotify_playlist_id}
+              >
+                {playlist.name} — {playlist.total_tracks} canciones
+              </option>
+            ))}
+          </select>
 
-    {isChangingScope && <span>Cambiando análisis...</span>}
-  </div>
-</section>
+          {isChangingScope && <span>Cambiando análisis...</span>}
+        </div>
+      </section>
 
       {syncStatus === "syncing" && (
         <section className="discovery-card loading-card">
