@@ -26,6 +26,18 @@ def init_db():
     """)
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS spotify_playlists (
+            spotify_user_id TEXT,
+            spotify_playlist_id TEXT,
+            name TEXT,
+            total_tracks INTEGER,
+            owner_name TEXT,
+            is_public INTEGER,
+            PRIMARY KEY (spotify_user_id, spotify_playlist_id)
+        )
+    """)
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS metadata (
             key TEXT PRIMARY KEY,
             value TEXT
@@ -55,6 +67,7 @@ def init_db():
     conn.close()
 
     migrate_tracks_table()
+    migrate_spotify_playlists_table()
     migrate_spotify_tokens_table()
     migrate_spotify_users_table()
 
@@ -71,6 +84,47 @@ def migrate_tracks_table():
 
     if "spotify_playlist_id" not in columns:
         cursor.execute("ALTER TABLE tracks ADD COLUMN spotify_playlist_id TEXT")
+
+    conn.commit()
+    conn.close()
+
+
+def migrate_spotify_playlists_table():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS spotify_playlists (
+            spotify_user_id TEXT,
+            spotify_playlist_id TEXT,
+            name TEXT,
+            total_tracks INTEGER,
+            owner_name TEXT,
+            is_public INTEGER,
+            PRIMARY KEY (spotify_user_id, spotify_playlist_id)
+        )
+    """)
+
+    cursor.execute("PRAGMA table_info(spotify_playlists)")
+    columns = [column[1] for column in cursor.fetchall()]
+
+    if "spotify_user_id" not in columns:
+        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN spotify_user_id TEXT")
+
+    if "spotify_playlist_id" not in columns:
+        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN spotify_playlist_id TEXT")
+
+    if "name" not in columns:
+        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN name TEXT")
+
+    if "total_tracks" not in columns:
+        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN total_tracks INTEGER")
+
+    if "owner_name" not in columns:
+        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN owner_name TEXT")
+
+    if "is_public" not in columns:
+        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN is_public INTEGER")
 
     conn.commit()
     conn.close()
@@ -223,6 +277,45 @@ def get_all_tracks(spotify_user_id, spotify_playlist_id=None):
     return tracks
 
 
+def save_user_playlists(spotify_user_id, playlists):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM spotify_playlists WHERE spotify_user_id = ?",
+        (spotify_user_id,)
+    )
+
+    for playlist in playlists:
+        owner = playlist.get("owner") or {}
+        tracks = playlist.get("tracks") or {}
+
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO spotify_playlists (
+                spotify_user_id,
+                spotify_playlist_id,
+                name,
+                total_tracks,
+                owner_name,
+                is_public
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                spotify_user_id,
+                playlist.get("id"),
+                playlist.get("name", "Sin nombre"),
+                tracks.get("total", 0),
+                owner.get("display_name") or owner.get("id"),
+                1 if playlist.get("public") else 0,
+            )
+        )
+
+    conn.commit()
+    conn.close()
+
+
 def get_user_playlists(spotify_user_id):
     conn = get_connection()
     cursor = conn.cursor()
@@ -231,13 +324,13 @@ def get_user_playlists(spotify_user_id):
         """
         SELECT
             spotify_playlist_id,
-            playlist,
-            COUNT(*) as total_tracks
-        FROM tracks
+            name,
+            total_tracks,
+            owner_name,
+            is_public
+        FROM spotify_playlists
         WHERE spotify_user_id = ?
-        AND spotify_playlist_id IS NOT NULL
-        GROUP BY spotify_playlist_id, playlist
-        ORDER BY total_tracks DESC
+        ORDER BY total_tracks DESC, name ASC
         """,
         (spotify_user_id,)
     )
@@ -252,6 +345,8 @@ def get_user_playlists(spotify_user_id):
             "spotify_playlist_id": row[0],
             "name": row[1],
             "total_tracks": row[2],
+            "owner_name": row[3],
+            "is_public": bool(row[4]),
         })
 
     return playlists

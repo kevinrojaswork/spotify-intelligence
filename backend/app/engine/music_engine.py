@@ -6,6 +6,7 @@ from app.database.db import (
     clear_tracks,
     save_tracks,
     get_all_tracks,
+    save_user_playlists,
     save_metadata,
     get_metadata,
 )
@@ -54,6 +55,9 @@ class MusicAnalysisEngine:
         playlists = self.get_all_playlists(sp)
         tracks_data = []
 
+        init_db()
+        save_user_playlists(spotify_user_id, playlists)
+
         for playlist in playlists:
             playlist_name = playlist["name"]
             playlist_id = playlist["id"]
@@ -80,7 +84,6 @@ class MusicAnalysisEngine:
                     "album": track["album"]["name"] if track.get("album") else "Sin álbum",
                 })
 
-        init_db()
         clear_tracks(spotify_user_id)
         save_tracks(spotify_user_id, tracks_data)
 
