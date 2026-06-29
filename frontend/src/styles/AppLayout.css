@@ -469,3 +469,70 @@
   color: #ffffff;
   font-size: 0.95rem;
 }
+
+
+.analysis-scope-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.4rem;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.analysis-scope-card h2 {
+  margin: 0.25rem 0 0.5rem;
+  color: #ffffff;
+}
+
+.analysis-scope-card p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.playlist-selector-wrapper {
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.playlist-selector-wrapper label {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.playlist-selector-wrapper select {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(12, 12, 18, 0.95);
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 0.85rem 0.9rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.playlist-selector-wrapper select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.playlist-selector-wrapper span {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 860px) {
+  .analysis-scope-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .playlist-selector-wrapper {
+    min-width: 100%;
+  }
+}

@@ -44,8 +44,15 @@ type MusicalDNA = {
   summary: string;
 };
 
+type PlaylistOption = {
+  spotify_playlist_id: string;
+  name: string;
+  total_tracks: number;
+};
+
 type DashboardStats = {
   spotify_user_id: string;
+  spotify_playlist_id: string | null;
   total_tracks: number;
   total_playlists: number;
   total_artists: number;
@@ -68,14 +75,82 @@ type DashboardStats = {
 
 function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isChangingScope, setIsChangingScope] = useState(false);
   const [showUpdateSuccess, setShowUpdateSuccess] = useState(false);
 
+  const getSpotifyUserId = () => {
+    return localStorage.getItem("spotify_user_id");
+  };
+
+  const loadDashboard = async (
+    spotifyUserId: string,
+    playlistId?: string
+  ) => {
+    const playlistQuery = playlistId
+      ? `&playlist_id=${encodeURIComponent(playlistId)}`
+      : "";
+
+    const response = await fetch(
+      `${API_BASE_URL}/dashboard?spotify_user_id=${encodeURIComponent(
+        spotifyUserId
+      )}${playlistQuery}`
+    );
+
+    if (!response.ok) {
+      throw new Error("No se pudo cargar el dashboard.");
+    }
+
+    const data = await response.json();
+    setStats(data);
+    return data as DashboardStats;
+  };
+
+  const loadPlaylists = async (spotifyUserId: string) => {
+    const response = await fetch(
+      `${API_BASE_URL}/playlists?spotify_user_id=${encodeURIComponent(
+        spotifyUserId
+      )}`
+    );
+
+    if (!response.ok) {
+      throw new Error("No se pudieron cargar las playlists.");
+    }
+
+    const data = await response.json();
+    setPlaylists(data.playlists || []);
+  };
+
+  const loadSyncStatus = async (spotifyUserId: string) => {
+    const response = await fetch(
+      `${API_BASE_URL}/sync-status?spotify_user_id=${encodeURIComponent(
+        spotifyUserId
+      )}`
+    );
+
+    if (!response.ok) {
+      throw new Error("No se pudo revisar el estado de sincronización.");
+    }
+
+    const data = await response.json();
+
+    setSyncStatus(data.status || "idle");
+    setSyncError(data.error || "");
+
+    return data as {
+      status: SyncStatus;
+      error: string;
+    };
+  };
+
   useEffect(() => {
-    const spotifyUserId = localStorage.getItem("spotify_user_id");
+    const spotifyUserId = getSpotifyUserId();
+    const storedPlaylistId = localStorage.getItem("selected_playlist_id") || "";
     const updateStarted =
       localStorage.getItem("analysis_update_started") === "true";
 
@@ -85,45 +160,9 @@ function Dashboard() {
       return;
     }
 
+    setSelectedPlaylistId(storedPlaylistId);
+
     let intervalId: number | undefined;
-
-    const loadDashboard = async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard?spotify_user_id=${encodeURIComponent(
-          spotifyUserId
-        )}`
-      );
-
-      if (!response.ok) {
-        throw new Error("No se pudo cargar el dashboard.");
-      }
-
-      const data = await response.json();
-      setStats(data);
-      return data as DashboardStats;
-    };
-
-    const loadSyncStatus = async () => {
-      const response = await fetch(
-        `${API_BASE_URL}/sync-status?spotify_user_id=${encodeURIComponent(
-          spotifyUserId
-        )}`
-      );
-
-      if (!response.ok) {
-        throw new Error("No se pudo revisar el estado de sincronización.");
-      }
-
-      const data = await response.json();
-
-      setSyncStatus(data.status || "idle");
-      setSyncError(data.error || "");
-
-      return data as {
-        status: SyncStatus;
-        error: string;
-      };
-    };
 
     const markUpdateCompleted = () => {
       if (updateStarted) {
@@ -134,14 +173,15 @@ function Dashboard() {
 
     const checkUntilSyncFinishes = async () => {
       try {
-        const statusData = await loadSyncStatus();
+        const statusData = await loadSyncStatus(spotifyUserId);
 
         if (statusData.status === "completed") {
           if (intervalId) {
             window.clearInterval(intervalId);
           }
 
-          await loadDashboard();
+          await loadPlaylists(spotifyUserId);
+          await loadDashboard(spotifyUserId, storedPlaylistId);
           markUpdateCompleted();
           setIsLoading(false);
         }
@@ -166,10 +206,11 @@ function Dashboard() {
 
     const start = async () => {
       try {
-        const statusData = await loadSyncStatus();
+        const statusData = await loadSyncStatus(spotifyUserId);
 
         try {
-          await loadDashboard();
+          await loadPlaylists(spotifyUserId);
+          await loadDashboard(spotifyUserId, storedPlaylistId);
         } catch (dashboardError) {
           console.error("Dashboard todavía no disponible:", dashboardError);
         }
@@ -206,6 +247,44 @@ function Dashboard() {
       }
     };
   }, []);
+
+  const handlePlaylistChange = async (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const newPlaylistId = event.target.value;
+    const spotifyUserId = getSpotifyUserId();
+
+    if (!spotifyUserId) {
+      setError("No hay una cuenta de Spotify conectada.");
+      return;
+    }
+
+    setSelectedPlaylistId(newPlaylistId);
+
+    if (newPlaylistId) {
+      localStorage.setItem("selected_playlist_id", newPlaylistId);
+    } else {
+      localStorage.removeItem("selected_playlist_id");
+    }
+
+    try {
+      setIsChangingScope(true);
+      await loadDashboard(spotifyUserId, newPlaylistId);
+    } catch (error) {
+      console.error("Error cambiando análisis:", error);
+      setError("No se pudo cambiar el análisis seleccionado.");
+    } finally {
+      setIsChangingScope(false);
+    }
+  };
+
+  const selectedPlaylist = playlists.find(
+    (playlist) => playlist.spotify_playlist_id === selectedPlaylistId
+  );
+
+  const currentScopeLabel = selectedPlaylist
+    ? selectedPlaylist.name
+    : "Toda mi biblioteca";
 
   if (isLoading) {
     return (
@@ -258,10 +337,11 @@ function Dashboard() {
       <div className="dashboard">
         <section className="discovery-card">
           <p className="section-label">Sin datos todavía</p>
-          <h2>No encontramos canciones guardadas para este usuario.</h2>
+          <h2>No encontramos canciones guardadas para este análisis.</h2>
           <p>
-            Usa el botón superior para conectar Spotify y crear tu análisis
-            musical.
+            Usa el botón superior para actualizar Spotify. Si acabamos de
+            agregar el selector de playlists, necesitas actualizar el análisis
+            una vez para llenar los nuevos datos.
           </p>
         </section>
       </div>
@@ -270,6 +350,41 @@ function Dashboard() {
 
   return (
     <div className="dashboard">
+      <section className="analysis-scope-card">
+        <div>
+          <p className="section-label">Modo de análisis</p>
+          <h2>Analizando: {currentScopeLabel}</h2>
+          <p>
+            Puedes analizar toda tu biblioteca o enfocarte en una playlist
+            específica.
+          </p>
+        </div>
+
+        <div className="playlist-selector-wrapper">
+          <label htmlFor="playlist-selector">Seleccionar análisis</label>
+
+          <select
+            id="playlist-selector"
+            value={selectedPlaylistId}
+            onChange={handlePlaylistChange}
+            disabled={isChangingScope}
+          >
+            <option value="">Toda mi biblioteca</option>
+
+            {playlists.map((playlist) => (
+              <option
+                key={playlist.spotify_playlist_id}
+                value={playlist.spotify_playlist_id}
+              >
+                {playlist.name} ({playlist.total_tracks})
+              </option>
+            ))}
+          </select>
+
+          {isChangingScope && <span>Cambiando análisis...</span>}
+        </div>
+      </section>
+
       {syncStatus === "syncing" && (
         <section className="discovery-card loading-card">
           <p className="section-label">Actualizando análisis</p>
@@ -317,30 +432,32 @@ function Dashboard() {
         totalTracks={stats.total_tracks}
       />
 
-      <TopListCard
-        label="Top playlists"
-        title="Tus playlists más grandes"
-        items={stats.top_playlists}
-        unit="canciones"
-      />
+      {!selectedPlaylistId && (
+        <TopListCard
+          label="Top playlists"
+          title="Tus playlists más grandes"
+          items={stats.top_playlists}
+          unit="canciones"
+        />
+      )}
 
       <TopListCard
         label="Top artistas"
-        title="Tus artistas más presentes en playlists"
+        title="Tus artistas más presentes"
         items={stats.top_artists}
         unit="canciones"
       />
 
       <TopListCard
         label="Top canciones"
-        title="Tus canciones más repetidas en playlists"
+        title="Tus canciones más repetidas"
         items={stats.top_songs}
         unit="veces"
       />
 
       <TopListCard
         label="Top álbumes"
-        title="Tus álbumes más presentes en playlists"
+        title="Tus álbumes más presentes"
         items={stats.top_albums}
         unit="canciones"
       />
