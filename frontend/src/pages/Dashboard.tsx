@@ -351,39 +351,43 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <section className="analysis-scope-card">
-        <div>
-          <p className="section-label">Modo de análisis</p>
-          <h2>Analizando: {currentScopeLabel}</h2>
-          <p>
-            Puedes analizar toda tu biblioteca o enfocarte en una playlist
-            específica.
-          </p>
-        </div>
+  <div>
+    <p className="section-label">Modo de análisis</p>
+    <h2>Analizando: {currentScopeLabel}</h2>
+    <p>
+      Puedes analizar toda tu biblioteca o enfocarte en una playlist
+      específica.
+    </p>
 
-        <div className="playlist-selector-wrapper">
-          <label htmlFor="playlist-selector">Seleccionar análisis</label>
+    <span className="playlist-count-label">
+      {playlists.length} playlists disponibles
+    </span>
+  </div>
 
-          <select
-            id="playlist-selector"
-            value={selectedPlaylistId}
-            onChange={handlePlaylistChange}
-            disabled={isChangingScope}
-          >
-            <option value="">Toda mi biblioteca</option>
+  <div className="playlist-selector-wrapper">
+    <label htmlFor="playlist-selector">Seleccionar análisis</label>
 
-            {playlists.map((playlist) => (
-              <option
-                key={playlist.spotify_playlist_id}
-                value={playlist.spotify_playlist_id}
-              >
-                {playlist.name} ({playlist.total_tracks})
-              </option>
-            ))}
-          </select>
+    <select
+      id="playlist-selector"
+      value={selectedPlaylistId}
+      onChange={handlePlaylistChange}
+      disabled={isChangingScope}
+    >
+      <option value="">Toda mi biblioteca</option>
 
-          {isChangingScope && <span>Cambiando análisis...</span>}
-        </div>
-      </section>
+      {playlists.map((playlist) => (
+        <option
+          key={playlist.spotify_playlist_id}
+          value={playlist.spotify_playlist_id}
+        >
+          {playlist.name} — {playlist.total_tracks} canciones
+        </option>
+      ))}
+    </select>
+
+    {isChangingScope && <span>Cambiando análisis...</span>}
+  </div>
+</section>
 
       {syncStatus === "syncing" && (
         <section className="discovery-card loading-card">
