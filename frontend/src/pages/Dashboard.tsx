@@ -538,10 +538,10 @@ function Dashboard() {
           </div>
 
           <div className="playlist-mode-stat-card">
-            <span>🔁</span>
-            <p>Canciones repetidas</p>
-            <strong>{stats.duplicate_songs.length}</strong>
-          </div>
+  <span>🔁</span>
+  <p>Duplicadas detectadas</p>
+  <strong>{repeatedSongsInPlaylist.length}</strong>
+</div>
         </section>
       ) : (
         <StatsGrid
