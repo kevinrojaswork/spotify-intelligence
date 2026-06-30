@@ -607,10 +607,13 @@ function Dashboard() {
         unit="canciones"
       />
 
-      <DuplicateSongsCard
-        songs={stats.duplicate_songs}
-        duplicatePercentage={stats.duplicate_percentage}
-      />
+      {!isPlaylistMode && (
+  <DuplicateSongsCard
+    songs={stats.duplicate_songs}
+    duplicatePercentage={stats.duplicate_percentage}
+  />
+)}
+
     </div>
   );
 }
