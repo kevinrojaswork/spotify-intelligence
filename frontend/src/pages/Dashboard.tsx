@@ -326,6 +326,10 @@ function Dashboard() {
     ? `${stats.dominant_artist.name} domina esta playlist: aparece ${stats.dominant_artist.count} veces, equivalente al ${stats.dominant_artist_percentage}% de las canciones analizadas.`
     : "Esta playlist ya fue analizada correctamente.";
 
+  const repeatedSongsInPlaylist = stats
+  ? stats.top_songs.filter((song) => song.count >= 2)
+  : [];
+
   if (isLoading) {
     return (
       <div className="dashboard">
@@ -585,16 +589,32 @@ function Dashboard() {
         unit="canciones"
       />
 
-      <TopListCard
-        label="Top canciones"
-        title={
-          isPlaylistMode
-            ? "Canciones más repetidas en esta playlist"
-            : "Tus canciones más repetidas"
-        }
-        items={stats.top_songs}
-        unit="veces"
-      />
+      {isPlaylistMode ? (
+  repeatedSongsInPlaylist.length > 0 ? (
+    <TopListCard
+      label="Duplicadas"
+      title="Canciones duplicadas en esta playlist"
+      items={repeatedSongsInPlaylist}
+      unit="veces"
+    />
+  ) : (
+    <section className="discovery-card">
+      <p className="section-label">Duplicadas</p>
+      <h2>No encontramos canciones duplicadas en esta playlist.</h2>
+      <p>
+        Todas las canciones de <strong>{currentScopeLabel}</strong> aparecen una
+        sola vez.
+      </p>
+    </section>
+  )
+) : (
+  <TopListCard
+    label="Top canciones"
+    title="Tus canciones más repetidas"
+    items={stats.top_songs}
+    unit="veces"
+  />
+)}
 
       <TopListCard
         label="Top álbumes"
