@@ -83,6 +83,7 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isChangingScope, setIsChangingScope] = useState(false);
   const [showUpdateSuccess, setShowUpdateSuccess] = useState(false);
+  const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
 
   const getSpotifyUserId = () => {
     return localStorage.getItem("spotify_user_id");
@@ -302,6 +303,7 @@ function Dashboard() {
     try {
       setIsChangingScope(true);
       await loadDashboard(spotifyUserId, newPlaylistId);
+      setIsPlaylistSelectorOpen(false);
     } catch (error) {
       console.error("Error cambiando análisis:", error);
       setError("No se pudo cambiar el análisis seleccionado.");
@@ -383,43 +385,85 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <section className="analysis-scope-card">
-        <div>
-          <p className="section-label">Modo de análisis</p>
-          <h2>Analizando: {currentScopeLabel}</h2>
-          <p>
-            Puedes analizar toda tu biblioteca o enfocarte en una playlist
-            específica.
-          </p>
+  <div>
+    <p className="section-label">Modo de análisis</p>
+    <h2>Analizando: {currentScopeLabel}</h2>
+    <p>
+      Puedes analizar toda tu biblioteca o enfocarte en una playlist específica.
+    </p>
 
-          <span className="playlist-count-label">
-            {playlists.length} playlists disponibles
-          </span>
-        </div>
+    <span className="playlist-count-label">
+      {playlists.length} playlists disponibles
+    </span>
+  </div>
 
-        <div className="playlist-selector-wrapper">
-          <label htmlFor="playlist-selector">Seleccionar análisis</label>
+  <div className="scope-actions">
+    <button
+      type="button"
+      className="secondary-button"
+      onClick={() => setIsPlaylistSelectorOpen((isOpen) => !isOpen)}
+    >
+      {isPlaylistSelectorOpen ? "Ocultar selector" : "Cambiar playlist"}
+    </button>
 
-          <select
-            id="playlist-selector"
-            value={selectedPlaylistId}
-            onChange={handlePlaylistChange}
-            disabled={isChangingScope}
-          >
-            <option value="">Toda mi biblioteca</option>
+    {selectedPlaylistId && (
+      <button
+        type="button"
+        className="scope-reset-button"
+        onClick={async () => {
+          const spotifyUserId = getSpotifyUserId();
 
-            {playlists.map((playlist) => (
-              <option
-                key={playlist.spotify_playlist_id}
-                value={playlist.spotify_playlist_id}
-              >
-                {playlist.name} — {playlist.total_tracks} canciones
-              </option>
-            ))}
-          </select>
+          if (!spotifyUserId) {
+            setError("No hay una cuenta de Spotify conectada.");
+            return;
+          }
 
-          {isChangingScope && <span>Cambiando análisis...</span>}
-        </div>
-      </section>
+          localStorage.removeItem("selected_playlist_id");
+          setSelectedPlaylistId("");
+
+          try {
+            setIsChangingScope(true);
+            await loadDashboard(spotifyUserId, "");
+            setIsPlaylistSelectorOpen(false);
+          } catch (error) {
+            console.error("Error volviendo a biblioteca completa:", error);
+            setError("No se pudo volver al análisis general.");
+          } finally {
+            setIsChangingScope(false);
+          }
+        }}
+      >
+        Ver toda mi biblioteca
+      </button>
+    )}
+
+    {isPlaylistSelectorOpen && (
+      <div className="playlist-selector-wrapper">
+        <label htmlFor="playlist-selector">Seleccionar análisis</label>
+
+        <select
+          id="playlist-selector"
+          value={selectedPlaylistId}
+          onChange={handlePlaylistChange}
+          disabled={isChangingScope}
+        >
+          <option value="">Toda mi biblioteca</option>
+
+          {playlists.map((playlist) => (
+            <option
+              key={playlist.spotify_playlist_id}
+              value={playlist.spotify_playlist_id}
+            >
+              {playlist.name} — {playlist.total_tracks} canciones
+            </option>
+          ))}
+        </select>
+
+        {isChangingScope && <span>Cambiando análisis...</span>}
+      </div>
+    )}
+  </div>
+</section>
 
       {syncStatus === "syncing" && (
         <section className="discovery-card loading-card">
