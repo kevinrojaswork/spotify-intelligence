@@ -124,7 +124,7 @@ def get_dashboard(
     )
 
 
-@router.get("/playlists")
+@router.get("/analysis-playlists")
 def get_playlists(spotify_user_id: Optional[str] = None):
     user_id = spotify_user_id or get_current_spotify_user_id()
 

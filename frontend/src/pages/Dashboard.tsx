@@ -133,7 +133,7 @@ function Dashboard() {
 
   const loadPlaylists = async (spotifyUserId: string) => {
     const response = await fetch(
-      `${API_BASE_URL}/playlists?spotify_user_id=${encodeURIComponent(
+      `${API_BASE_URL}/analysis-playlists?spotify_user_id=${encodeURIComponent(
         spotifyUserId
       )}`
     );
