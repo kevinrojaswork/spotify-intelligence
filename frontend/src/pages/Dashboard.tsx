@@ -320,6 +320,12 @@ function Dashboard() {
     ? selectedPlaylist.name
     : "Toda mi biblioteca";
 
+  const isPlaylistMode = Boolean(selectedPlaylistId);
+
+  const playlistDiscovery = stats?.dominant_artist
+    ? `${stats.dominant_artist.name} domina esta playlist: aparece ${stats.dominant_artist.count} veces, equivalente al ${stats.dominant_artist_percentage}% de las canciones analizadas.`
+    : "Esta playlist ya fue analizada correctamente.";
+
   if (isLoading) {
     return (
       <div className="dashboard">
@@ -385,85 +391,91 @@ function Dashboard() {
   return (
     <div className="dashboard">
       <section className="analysis-scope-card">
-  <div>
-    <p className="section-label">Modo de análisis</p>
-    <h2>Analizando: {currentScopeLabel}</h2>
-    <p>
-      Puedes analizar toda tu biblioteca o enfocarte en una playlist específica.
-    </p>
+        <div>
+          <p className="section-label">
+            {isPlaylistMode ? "Modo playlist" : "Modo biblioteca"}
+          </p>
 
-    <span className="playlist-count-label">
-      {playlists.length} playlists disponibles
-    </span>
-  </div>
+          <h2>Analizando: {currentScopeLabel}</h2>
 
-  <div className="scope-actions">
-    <button
-      type="button"
-      className="secondary-button"
-      onClick={() => setIsPlaylistSelectorOpen((isOpen) => !isOpen)}
-    >
-      {isPlaylistSelectorOpen ? "Ocultar selector" : "Cambiar playlist"}
-    </button>
+          <p>
+            {isPlaylistMode
+              ? "Estás viendo un análisis calculado solo con las canciones de esta playlist."
+              : "Estás viendo un análisis general de todas tus playlists guardadas."}
+          </p>
 
-    {selectedPlaylistId && (
-      <button
-        type="button"
-        className="scope-reset-button"
-        onClick={async () => {
-          const spotifyUserId = getSpotifyUserId();
+          <span className="playlist-count-label">
+            {playlists.length} playlists disponibles
+          </span>
+        </div>
 
-          if (!spotifyUserId) {
-            setError("No hay una cuenta de Spotify conectada.");
-            return;
-          }
+        <div className="scope-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setIsPlaylistSelectorOpen((isOpen) => !isOpen)}
+          >
+            {isPlaylistSelectorOpen ? "Ocultar selector" : "Cambiar playlist"}
+          </button>
 
-          localStorage.removeItem("selected_playlist_id");
-          setSelectedPlaylistId("");
+          {selectedPlaylistId && (
+            <button
+              type="button"
+              className="scope-reset-button"
+              onClick={async () => {
+                const spotifyUserId = getSpotifyUserId();
 
-          try {
-            setIsChangingScope(true);
-            await loadDashboard(spotifyUserId, "");
-            setIsPlaylistSelectorOpen(false);
-          } catch (error) {
-            console.error("Error volviendo a biblioteca completa:", error);
-            setError("No se pudo volver al análisis general.");
-          } finally {
-            setIsChangingScope(false);
-          }
-        }}
-      >
-        Ver toda mi biblioteca
-      </button>
-    )}
+                if (!spotifyUserId) {
+                  setError("No hay una cuenta de Spotify conectada.");
+                  return;
+                }
 
-    {isPlaylistSelectorOpen && (
-      <div className="playlist-selector-wrapper">
-        <label htmlFor="playlist-selector">Seleccionar análisis</label>
+                localStorage.removeItem("selected_playlist_id");
+                setSelectedPlaylistId("");
 
-        <select
-          id="playlist-selector"
-          value={selectedPlaylistId}
-          onChange={handlePlaylistChange}
-          disabled={isChangingScope}
-        >
-          <option value="">Toda mi biblioteca</option>
-
-          {playlists.map((playlist) => (
-            <option
-              key={playlist.spotify_playlist_id}
-              value={playlist.spotify_playlist_id}
+                try {
+                  setIsChangingScope(true);
+                  await loadDashboard(spotifyUserId, "");
+                  setIsPlaylistSelectorOpen(false);
+                } catch (error) {
+                  console.error("Error volviendo a biblioteca completa:", error);
+                  setError("No se pudo volver al análisis general.");
+                } finally {
+                  setIsChangingScope(false);
+                }
+              }}
             >
-              {playlist.name} — {playlist.total_tracks} canciones
-            </option>
-          ))}
-        </select>
+              Ver toda mi biblioteca
+            </button>
+          )}
 
-        {isChangingScope && <span>Cambiando análisis...</span>}
-      </div>
-    )}
-  </div>
-</section>
+          {isPlaylistSelectorOpen && (
+            <div className="playlist-selector-wrapper">
+              <label htmlFor="playlist-selector">Seleccionar análisis</label>
+
+              <select
+                id="playlist-selector"
+                value={selectedPlaylistId}
+                onChange={handlePlaylistChange}
+                disabled={isChangingScope}
+              >
+                <option value="">Toda mi biblioteca</option>
+
+                {playlists.map((playlist) => (
+                  <option
+                    key={playlist.spotify_playlist_id}
+                    value={playlist.spotify_playlist_id}
+                  >
+                    {playlist.name} — {playlist.total_tracks} canciones
+                  </option>
+                ))}
+              </select>
+
+              {isChangingScope && <span>Cambiando análisis...</span>}
+            </div>
+          )}
+        </div>
+      </section>
 
       {syncStatus === "syncing" && (
         <section className="discovery-card loading-card">
@@ -485,34 +497,75 @@ function Dashboard() {
         </section>
       )}
 
-      <DiscoveryCard
-        discovery={stats.daily_discovery}
-        lastSync={stats.last_sync}
-      />
+      {isPlaylistMode ? (
+        <section className="discovery-card playlist-context-card">
+          <p className="section-label">Resumen de esta playlist</p>
+          <h2>{playlistDiscovery}</h2>
+          <p>
+            Este análisis no usa toda tu biblioteca, solo las canciones guardadas
+            dentro de <strong>{currentScopeLabel}</strong>.
+          </p>
+        </section>
+      ) : (
+        <DiscoveryCard
+          discovery={stats.daily_discovery}
+          lastSync={stats.last_sync}
+        />
+      )}
 
-      <StatsGrid
-        totalTracks={stats.total_tracks}
-        totalPlaylists={stats.total_playlists}
-        totalArtists={stats.total_artists}
-        totalAlbums={stats.total_albums}
-      />
+      {isPlaylistMode ? (
+        <section className="playlist-mode-summary-grid">
+          <div className="playlist-mode-stat-card">
+            <span>🎵</span>
+            <p>Canciones en esta playlist</p>
+            <strong>{stats.total_tracks}</strong>
+          </div>
+
+          <div className="playlist-mode-stat-card">
+            <span>🎤</span>
+            <p>Artistas únicos</p>
+            <strong>{stats.total_artists}</strong>
+          </div>
+
+          <div className="playlist-mode-stat-card">
+            <span>💿</span>
+            <p>Álbumes únicos</p>
+            <strong>{stats.total_albums}</strong>
+          </div>
+
+          <div className="playlist-mode-stat-card">
+            <span>🔁</span>
+            <p>Canciones repetidas</p>
+            <strong>{stats.duplicate_songs.length}</strong>
+          </div>
+        </section>
+      ) : (
+        <StatsGrid
+          totalTracks={stats.total_tracks}
+          totalPlaylists={stats.total_playlists}
+          totalArtists={stats.total_artists}
+          totalAlbums={stats.total_albums}
+        />
+      )}
 
       <MusicalDNACard dna={stats.musical_dna} />
 
-      <SmartInsightsCard insights={stats.smart_insights} />
+      {!isPlaylistMode && <SmartInsightsCard insights={stats.smart_insights} />}
 
       <DominantArtistCard
         artist={stats.dominant_artist}
         percentage={stats.dominant_artist_percentage}
       />
 
-      <PlaylistInsightsCard
-        largestPlaylist={stats.largest_playlist}
-        smallestPlaylist={stats.smallest_playlist}
-        totalTracks={stats.total_tracks}
-      />
+      {!isPlaylistMode && (
+        <PlaylistInsightsCard
+          largestPlaylist={stats.largest_playlist}
+          smallestPlaylist={stats.smallest_playlist}
+          totalTracks={stats.total_tracks}
+        />
+      )}
 
-      {!selectedPlaylistId && (
+      {!isPlaylistMode && (
         <TopListCard
           label="Top playlists"
           title="Tus playlists más grandes"
@@ -523,21 +576,33 @@ function Dashboard() {
 
       <TopListCard
         label="Top artistas"
-        title="Tus artistas más presentes"
+        title={
+          isPlaylistMode
+            ? "Artistas más presentes en esta playlist"
+            : "Tus artistas más presentes"
+        }
         items={stats.top_artists}
         unit="canciones"
       />
 
       <TopListCard
         label="Top canciones"
-        title="Tus canciones más repetidas"
+        title={
+          isPlaylistMode
+            ? "Canciones más repetidas en esta playlist"
+            : "Tus canciones más repetidas"
+        }
         items={stats.top_songs}
         unit="veces"
       />
 
       <TopListCard
         label="Top álbumes"
-        title="Tus álbumes más presentes"
+        title={
+          isPlaylistMode
+            ? "Álbumes más presentes en esta playlist"
+            : "Tus álbumes más presentes"
+        }
         items={stats.top_albums}
         unit="canciones"
       />

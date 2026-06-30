@@ -573,3 +573,56 @@
     align-items: stretch;
   }
 }
+
+
+.playlist-context-card {
+  text-align: center;
+}
+
+.playlist-context-card strong {
+  color: #ffffff;
+}
+
+.playlist-mode-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.playlist-mode-stat-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.065);
+  text-align: center;
+}
+
+.playlist-mode-stat-card span {
+  font-size: 34px;
+}
+
+.playlist-mode-stat-card p {
+  margin: 14px 0 6px;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 800;
+}
+
+.playlist-mode-stat-card strong {
+  display: block;
+  margin: 0;
+  color: #ffffff;
+  font-size: 38px;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .playlist-mode-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .playlist-mode-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
