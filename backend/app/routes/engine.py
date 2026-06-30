@@ -14,6 +14,7 @@ from app.database.db import (
     get_spotify_user,
     save_spotify_user,
     get_user_playlists,
+    save_user_playlists,
 )
 
 router = APIRouter()
@@ -26,6 +27,21 @@ def get_user_image_url(user):
         return images[0].get("url")
 
     return None
+
+
+def get_all_spotify_playlists(sp):
+    playlists = []
+    results = sp.current_user_playlists(limit=50)
+
+    while results:
+        playlists.extend(results["items"])
+
+        if results["next"]:
+            results = sp.next(results)
+        else:
+            break
+
+    return playlists
 
 
 def sync_user_in_background(spotify_user_id: str):
@@ -125,7 +141,7 @@ def get_dashboard(
 
 
 @router.get("/analysis-playlists")
-def get_playlists(spotify_user_id: Optional[str] = None):
+def get_analysis_playlists(spotify_user_id: Optional[str] = None):
     user_id = spotify_user_id or get_current_spotify_user_id()
 
     if not user_id:
@@ -135,6 +151,25 @@ def get_playlists(spotify_user_id: Optional[str] = None):
         )
 
     init_db()
+
+    playlists = get_user_playlists(user_id)
+
+    if playlists:
+        return {
+            "spotify_user_id": user_id,
+            "playlists": playlists,
+        }
+
+    sp = get_spotify_client(user_id)
+
+    if not sp:
+        raise HTTPException(
+            status_code=401,
+            detail="Tu sesión de Spotify expiró. Conecta Spotify nuevamente."
+        )
+
+    spotify_playlists = get_all_spotify_playlists(sp)
+    save_user_playlists(user_id, spotify_playlists)
 
     playlists = get_user_playlists(user_id)
 
