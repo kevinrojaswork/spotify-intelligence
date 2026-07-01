@@ -3,12 +3,17 @@ from collections import Counter
 
 from app.database.db import (
     init_db,
-    clear_tracks,
     save_tracks,
     get_all_tracks,
+    get_user_playlists,
     save_user_playlists,
     save_metadata,
     get_metadata,
+    get_playlist_snapshot_map,
+    delete_tracks_for_playlist,
+    delete_tracks_not_in_playlists,
+    count_tracks_for_playlist,
+    update_tracks_playlist_name,
 )
 
 from app.analyzers.artist_analyzer import ArtistAnalyzer
@@ -51,18 +56,65 @@ class MusicAnalysisEngine:
 
         return tracks
 
-    def sync(self, sp, spotify_user_id):
-        playlists = self.get_all_playlists(sp)
-        tracks_data = []
+        def sync(self, sp, spotify_user_id: str):
+            playlists = get_all_playlists(sp)
 
         init_db()
+
+        previous_snapshots = get_playlist_snapshot_map(spotify_user_id)
+
+        current_playlist_ids = [
+            playlist.get("id")
+            for playlist in playlists
+            if playlist.get("id")
+        ]
+
         save_user_playlists(spotify_user_id, playlists)
+        delete_tracks_not_in_playlists(spotify_user_id, current_playlist_ids)
+
+        total_tracks_loaded = 0
+        playlists_updated = 0
+        playlists_skipped = 0
 
         for playlist in playlists:
-            playlist_name = playlist["name"]
-            playlist_id = playlist["id"]
+            playlist_id = playlist.get("id")
+            playlist_name = playlist.get("name", "Sin nombre")
 
-            playlist_tracks = self.get_all_playlist_tracks(sp, playlist_id)
+            if not playlist_id:
+                continue
+
+            tracks_info = playlist.get("tracks") or {}
+            expected_total_tracks = tracks_info.get("total", 0)
+            current_snapshot_id = playlist.get("snapshot_id")
+            previous_snapshot_id = previous_snapshots.get(playlist_id)
+
+            existing_tracks_count = count_tracks_for_playlist(
+                spotify_user_id,
+                playlist_id,
+            )
+
+            playlist_changed = previous_snapshot_id != current_snapshot_id
+            playlist_has_missing_tracks = existing_tracks_count != expected_total_tracks
+            playlist_is_new = previous_snapshot_id is None
+
+            should_update_playlist = (
+                playlist_is_new
+                or playlist_changed
+                or playlist_has_missing_tracks
+            )
+
+            if not should_update_playlist:
+                update_tracks_playlist_name(
+                    spotify_user_id,
+                    playlist_id,
+                    playlist_name,
+                )
+                playlists_skipped += 1
+                continue
+
+            playlist_tracks = get_all_playlist_tracks(sp, playlist_id)
+
+            tracks_data = []
 
             for item in playlist_tracks:
                 track = item.get("track")
@@ -70,35 +122,40 @@ class MusicAnalysisEngine:
                 if not track:
                     continue
 
-                artists = []
+                artists = [
+                    artist.get("name", "Artista desconocido")
+                    for artist in track.get("artists", [])
+                ]
 
-                for artist in track.get("artists", []):
-                    if artist and artist.get("name"):
-                        artists.append(artist["name"])
+                album = track.get("album") or {}
 
-                tracks_data.append({
-                    "spotify_playlist_id": playlist_id,
-                    "playlist": playlist_name,
-                    "track_name": track.get("name", "Sin nombre"),
-                    "artists": artists,
-                    "album": track["album"]["name"] if track.get("album") else "Sin álbum",
-                })
+                tracks_data.append(
+                    {
+                        "spotify_playlist_id": playlist_id,
+                        "playlist": playlist_name,
+                        "track_name": track.get("name", "Sin nombre"),
+                        "artists": artists,
+                        "album": album.get("name", "Sin álbum"),
+                    }
+                )
 
-        clear_tracks(spotify_user_id)
-        save_tracks(spotify_user_id, tracks_data)
+            delete_tracks_for_playlist(spotify_user_id, playlist_id)
+            save_tracks(spotify_user_id, tracks_data)
+
+            total_tracks_loaded += len(tracks_data)
+            playlists_updated += 1
 
         save_metadata(
             f"last_sync:{spotify_user_id}",
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            datetime.now().isoformat(timespec="seconds"),
         )
 
-        self.tracks = tracks_data
-
         return {
-            "message": "Biblioteca sincronizada completamente",
-            "spotify_user_id": spotify_user_id,
-            "tracks_loaded": len(tracks_data),
+            "message": "Análisis actualizado correctamente",
+            "tracks_loaded": total_tracks_loaded,
             "playlists_loaded": len(playlists),
+            "playlists_updated": playlists_updated,
+            "playlists_skipped": playlists_skipped,
         }
 
     def analyze(self, spotify_user_id, spotify_playlist_id=None):
