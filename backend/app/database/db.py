@@ -1,19 +1,35 @@
 import sqlite3
 from pathlib import Path
-from datetime import datetime
+from typing import Any
 
 DB_PATH = Path(__file__).resolve().parent / "spotify_intelligence.db"
 
 
 def get_connection():
-    return sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
-def init_db():
-    conn = get_connection()
+def column_exists(conn, table_name: str, column_name: str) -> bool:
     cursor = conn.cursor()
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    columns = cursor.fetchall()
+    return any(column["name"] == column_name for column in columns)
 
-    cursor.execute("""
+
+def add_column_if_missing(conn, table_name: str, column_name: str, column_definition: str):
+    if not column_exists(conn, table_name, column_name):
+        conn.execute(
+            f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
+        )
+
+
+def migrate_tracks_table():
+    conn = get_connection()
+
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS tracks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             spotify_user_id TEXT,
@@ -23,67 +39,15 @@ def init_db():
             artists TEXT,
             album TEXT
         )
-    """)
+        """
+    )
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS spotify_playlists (
-            spotify_user_id TEXT,
-            spotify_playlist_id TEXT,
-            name TEXT,
-            total_tracks INTEGER,
-            owner_name TEXT,
-            is_public INTEGER,
-            PRIMARY KEY (spotify_user_id, spotify_playlist_id)
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS metadata (
-            key TEXT PRIMARY KEY,
-            value TEXT
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS spotify_tokens (
-            spotify_user_id TEXT PRIMARY KEY,
-            access_token TEXT,
-            refresh_token TEXT,
-            expires_at INTEGER
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS spotify_users (
-            spotify_user_id TEXT PRIMARY KEY,
-            display_name TEXT,
-            email TEXT,
-            image_url TEXT,
-            last_login TEXT
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-
-    migrate_tracks_table()
-    migrate_spotify_playlists_table()
-    migrate_spotify_tokens_table()
-    migrate_spotify_users_table()
-
-
-def migrate_tracks_table():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("PRAGMA table_info(tracks)")
-    columns = [column[1] for column in cursor.fetchall()]
-
-    if "spotify_user_id" not in columns:
-        cursor.execute("ALTER TABLE tracks ADD COLUMN spotify_user_id TEXT")
-
-    if "spotify_playlist_id" not in columns:
-        cursor.execute("ALTER TABLE tracks ADD COLUMN spotify_playlist_id TEXT")
+    add_column_if_missing(conn, "tracks", "spotify_user_id", "TEXT")
+    add_column_if_missing(conn, "tracks", "spotify_playlist_id", "TEXT")
+    add_column_if_missing(conn, "tracks", "playlist", "TEXT")
+    add_column_if_missing(conn, "tracks", "track_name", "TEXT")
+    add_column_if_missing(conn, "tracks", "artists", "TEXT")
+    add_column_if_missing(conn, "tracks", "album", "TEXT")
 
     conn.commit()
     conn.close()
@@ -91,9 +55,9 @@ def migrate_tracks_table():
 
 def migrate_spotify_playlists_table():
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS spotify_playlists (
             spotify_user_id TEXT,
             spotify_playlist_id TEXT,
@@ -101,30 +65,35 @@ def migrate_spotify_playlists_table():
             total_tracks INTEGER,
             owner_name TEXT,
             is_public INTEGER,
+            snapshot_id TEXT,
             PRIMARY KEY (spotify_user_id, spotify_playlist_id)
         )
-    """)
+        """
+    )
 
-    cursor.execute("PRAGMA table_info(spotify_playlists)")
-    columns = [column[1] for column in cursor.fetchall()]
+    add_column_if_missing(conn, "spotify_playlists", "spotify_user_id", "TEXT")
+    add_column_if_missing(conn, "spotify_playlists", "spotify_playlist_id", "TEXT")
+    add_column_if_missing(conn, "spotify_playlists", "name", "TEXT")
+    add_column_if_missing(conn, "spotify_playlists", "total_tracks", "INTEGER")
+    add_column_if_missing(conn, "spotify_playlists", "owner_name", "TEXT")
+    add_column_if_missing(conn, "spotify_playlists", "is_public", "INTEGER")
+    add_column_if_missing(conn, "spotify_playlists", "snapshot_id", "TEXT")
 
-    if "spotify_user_id" not in columns:
-        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN spotify_user_id TEXT")
+    conn.commit()
+    conn.close()
 
-    if "spotify_playlist_id" not in columns:
-        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN spotify_playlist_id TEXT")
 
-    if "name" not in columns:
-        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN name TEXT")
+def migrate_metadata_table():
+    conn = get_connection()
 
-    if "total_tracks" not in columns:
-        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN total_tracks INTEGER")
-
-    if "owner_name" not in columns:
-        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN owner_name TEXT")
-
-    if "is_public" not in columns:
-        cursor.execute("ALTER TABLE spotify_playlists ADD COLUMN is_public INTEGER")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+        """
+    )
 
     conn.commit()
     conn.close()
@@ -132,28 +101,17 @@ def migrate_spotify_playlists_table():
 
 def migrate_spotify_tokens_table():
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS spotify_tokens (
             spotify_user_id TEXT PRIMARY KEY,
             access_token TEXT,
             refresh_token TEXT,
             expires_at INTEGER
         )
-    """)
-
-    cursor.execute("PRAGMA table_info(spotify_tokens)")
-    columns = [column[1] for column in cursor.fetchall()]
-
-    if "access_token" not in columns:
-        cursor.execute("ALTER TABLE spotify_tokens ADD COLUMN access_token TEXT")
-
-    if "refresh_token" not in columns:
-        cursor.execute("ALTER TABLE spotify_tokens ADD COLUMN refresh_token TEXT")
-
-    if "expires_at" not in columns:
-        cursor.execute("ALTER TABLE spotify_tokens ADD COLUMN expires_at INTEGER")
+        """
+    )
 
     conn.commit()
     conn.close()
@@ -161,9 +119,9 @@ def migrate_spotify_tokens_table():
 
 def migrate_spotify_users_table():
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS spotify_users (
             spotify_user_id TEXT PRIMARY KEY,
             display_name TEXT,
@@ -171,93 +129,192 @@ def migrate_spotify_users_table():
             image_url TEXT,
             last_login TEXT
         )
-    """)
-
-    cursor.execute("PRAGMA table_info(spotify_users)")
-    columns = [column[1] for column in cursor.fetchall()]
-
-    if "display_name" not in columns:
-        cursor.execute("ALTER TABLE spotify_users ADD COLUMN display_name TEXT")
-
-    if "email" not in columns:
-        cursor.execute("ALTER TABLE spotify_users ADD COLUMN email TEXT")
-
-    if "image_url" not in columns:
-        cursor.execute("ALTER TABLE spotify_users ADD COLUMN image_url TEXT")
-
-    if "last_login" not in columns:
-        cursor.execute("ALTER TABLE spotify_users ADD COLUMN last_login TEXT")
-
-    conn.commit()
-    conn.close()
-
-
-def clear_tracks(spotify_user_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "DELETE FROM tracks WHERE spotify_user_id = ?",
-        (spotify_user_id,)
+        """
     )
 
     conn.commit()
     conn.close()
 
 
-def save_tracks(spotify_user_id, tracks):
-    conn = get_connection()
-    cursor = conn.cursor()
+def init_db():
+    migrate_tracks_table()
+    migrate_spotify_playlists_table()
+    migrate_metadata_table()
+    migrate_spotify_tokens_table()
+    migrate_spotify_users_table()
 
-    for track in tracks:
-        cursor.execute(
+
+def normalize_artists(artists: Any) -> str:
+    if isinstance(artists, list):
+        return ", ".join(artists)
+
+    if isinstance(artists, str):
+        return artists
+
+    return ""
+
+
+def clear_tracks(spotify_user_id: str):
+    conn = get_connection()
+
+    conn.execute(
+        """
+        DELETE FROM tracks
+        WHERE spotify_user_id = ?
+        """,
+        (spotify_user_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def delete_tracks_for_playlist(spotify_user_id: str, spotify_playlist_id: str):
+    conn = get_connection()
+
+    conn.execute(
+        """
+        DELETE FROM tracks
+        WHERE spotify_user_id = ?
+        AND spotify_playlist_id = ?
+        """,
+        (spotify_user_id, spotify_playlist_id),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def delete_tracks_not_in_playlists(spotify_user_id: str, playlist_ids: list[str]):
+    conn = get_connection()
+
+    if not playlist_ids:
+        conn.execute(
             """
-            INSERT INTO tracks (
-                spotify_user_id,
-                spotify_playlist_id,
-                playlist,
-                track_name,
-                artists,
-                album
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
+            DELETE FROM tracks
+            WHERE spotify_user_id = ?
             """,
-            (
-                spotify_user_id,
-                track.get("spotify_playlist_id"),
-                track["playlist"],
-                track["track_name"],
-                ", ".join(track["artists"]),
-                track["album"],
-            )
+            (spotify_user_id,),
+        )
+    else:
+        placeholders = ",".join(["?"] * len(playlist_ids))
+
+        conn.execute(
+            f"""
+            DELETE FROM tracks
+            WHERE spotify_user_id = ?
+            AND spotify_playlist_id NOT IN ({placeholders})
+            """,
+            [spotify_user_id, *playlist_ids],
         )
 
     conn.commit()
     conn.close()
 
 
-def get_all_tracks(spotify_user_id, spotify_playlist_id=None):
+def count_tracks_for_playlist(spotify_user_id: str, spotify_playlist_id: str) -> int:
     conn = get_connection()
-    cursor = conn.cursor()
+
+    cursor = conn.execute(
+        """
+        SELECT COUNT(*) AS total
+        FROM tracks
+        WHERE spotify_user_id = ?
+        AND spotify_playlist_id = ?
+        """,
+        (spotify_user_id, spotify_playlist_id),
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    return int(row["total"]) if row else 0
+
+
+def update_tracks_playlist_name(
+    spotify_user_id: str,
+    spotify_playlist_id: str,
+    playlist_name: str,
+):
+    conn = get_connection()
+
+    conn.execute(
+        """
+        UPDATE tracks
+        SET playlist = ?
+        WHERE spotify_user_id = ?
+        AND spotify_playlist_id = ?
+        """,
+        (playlist_name, spotify_user_id, spotify_playlist_id),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def save_tracks(spotify_user_id: str, tracks: list[dict]):
+    if not tracks:
+        return
+
+    conn = get_connection()
+
+    rows = []
+
+    for track in tracks:
+        rows.append(
+            (
+                spotify_user_id,
+                track.get("spotify_playlist_id"),
+                track.get("playlist"),
+                track.get("track_name"),
+                normalize_artists(track.get("artists")),
+                track.get("album"),
+            )
+        )
+
+    conn.executemany(
+        """
+        INSERT INTO tracks (
+            spotify_user_id,
+            spotify_playlist_id,
+            playlist,
+            track_name,
+            artists,
+            album
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        rows,
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_all_tracks(
+    spotify_user_id: str,
+    spotify_playlist_id: str | None = None,
+) -> list[dict]:
+    conn = get_connection()
 
     if spotify_playlist_id:
-        cursor.execute(
+        cursor = conn.execute(
             """
             SELECT spotify_playlist_id, playlist, track_name, artists, album
             FROM tracks
             WHERE spotify_user_id = ?
             AND spotify_playlist_id = ?
             """,
-            (spotify_user_id, spotify_playlist_id)
+            (spotify_user_id, spotify_playlist_id),
         )
     else:
-        cursor.execute(
+        cursor = conn.execute(
             """
             SELECT spotify_playlist_id, playlist, track_name, artists, album
             FROM tracks
             WHERE spotify_user_id = ?
             """,
-            (spotify_user_id,)
+            (spotify_user_id,),
         )
 
     rows = cursor.fetchall()
@@ -266,31 +323,64 @@ def get_all_tracks(spotify_user_id, spotify_playlist_id=None):
     tracks = []
 
     for row in rows:
-        tracks.append({
-            "spotify_playlist_id": row[0],
-            "playlist": row[1],
-            "track_name": row[2],
-            "artists": row[3].split(", ") if row[3] else [],
-            "album": row[4],
-        })
+        artists_text = row["artists"] or ""
+
+        tracks.append(
+            {
+                "spotify_playlist_id": row["spotify_playlist_id"],
+                "playlist": row["playlist"],
+                "track_name": row["track_name"],
+                "artists": [
+                    artist.strip()
+                    for artist in artists_text.split(",")
+                    if artist.strip()
+                ],
+                "album": row["album"],
+            }
+        )
 
     return tracks
 
 
-def save_user_playlists(spotify_user_id, playlists):
+def save_user_playlists(spotify_user_id: str, playlists: list[dict]):
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute(
-        "DELETE FROM spotify_playlists WHERE spotify_user_id = ?",
-        (spotify_user_id,)
-    )
+    playlist_ids = [
+        playlist.get("id")
+        for playlist in playlists
+        if playlist.get("id")
+    ]
+
+    if playlist_ids:
+        placeholders = ",".join(["?"] * len(playlist_ids))
+
+        conn.execute(
+            f"""
+            DELETE FROM spotify_playlists
+            WHERE spotify_user_id = ?
+            AND spotify_playlist_id NOT IN ({placeholders})
+            """,
+            [spotify_user_id, *playlist_ids],
+        )
+    else:
+        conn.execute(
+            """
+            DELETE FROM spotify_playlists
+            WHERE spotify_user_id = ?
+            """,
+            (spotify_user_id,),
+        )
 
     for playlist in playlists:
+        playlist_id = playlist.get("id")
+
+        if not playlist_id:
+            continue
+
         owner = playlist.get("owner") or {}
         tracks = playlist.get("tracks") or {}
 
-        cursor.execute(
+        conn.execute(
             """
             INSERT OR REPLACE INTO spotify_playlists (
                 spotify_user_id,
@@ -298,111 +388,127 @@ def save_user_playlists(spotify_user_id, playlists):
                 name,
                 total_tracks,
                 owner_name,
-                is_public
+                is_public,
+                snapshot_id
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 spotify_user_id,
-                playlist.get("id"),
+                playlist_id,
                 playlist.get("name", "Sin nombre"),
                 tracks.get("total", 0),
-                owner.get("display_name") or owner.get("id"),
+                owner.get("display_name") or owner.get("id") or "Desconocido",
                 1 if playlist.get("public") else 0,
-            )
+                playlist.get("snapshot_id"),
+            ),
         )
 
     conn.commit()
     conn.close()
 
 
-def get_user_playlists(spotify_user_id):
+def get_user_playlists(spotify_user_id: str) -> list[dict]:
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute(
+    cursor = conn.execute(
         """
         SELECT
             spotify_playlist_id,
             name,
             total_tracks,
             owner_name,
-            is_public
+            is_public,
+            snapshot_id
         FROM spotify_playlists
         WHERE spotify_user_id = ?
-        ORDER BY total_tracks DESC, name ASC
+        ORDER BY name COLLATE NOCASE ASC
         """,
-        (spotify_user_id,)
+        (spotify_user_id,),
     )
 
     rows = cursor.fetchall()
     conn.close()
 
-    playlists = []
+    return [
+        {
+            "spotify_playlist_id": row["spotify_playlist_id"],
+            "name": row["name"],
+            "total_tracks": row["total_tracks"],
+            "owner_name": row["owner_name"],
+            "is_public": bool(row["is_public"]),
+            "snapshot_id": row["snapshot_id"],
+        }
+        for row in rows
+    ]
 
-    for row in rows:
-        playlists.append({
-            "spotify_playlist_id": row[0],
-            "name": row[1],
-            "total_tracks": row[2],
-            "owner_name": row[3],
-            "is_public": bool(row[4]),
-        })
 
-    return playlists
+def get_playlist_snapshot_map(spotify_user_id: str) -> dict[str, str | None]:
+    playlists = get_user_playlists(spotify_user_id)
+
+    return {
+        playlist["spotify_playlist_id"]: playlist.get("snapshot_id")
+        for playlist in playlists
+    }
 
 
-def save_metadata(key, value):
+def save_metadata(key: str, value: str):
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute(
+    conn.execute(
         """
         INSERT OR REPLACE INTO metadata (key, value)
         VALUES (?, ?)
         """,
-        (key, value)
+        (key, value),
     )
 
     conn.commit()
     conn.close()
 
 
-def get_metadata(key):
+def get_metadata(key: str) -> str | None:
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("SELECT value FROM metadata WHERE key = ?", (key,))
+    cursor = conn.execute(
+        """
+        SELECT value
+        FROM metadata
+        WHERE key = ?
+        """,
+        (key,),
+    )
+
     row = cursor.fetchone()
-
     conn.close()
 
-    return row[0] if row else None
+    return row["value"] if row else None
 
 
 def save_spotify_token(
-    spotify_user_id,
-    access_token,
-    refresh_token,
-    expires_at,
+    spotify_user_id: str,
+    access_token: str,
+    refresh_token: str | None,
+    expires_at: int,
 ):
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute(
+    cursor = conn.execute(
         """
         SELECT refresh_token
         FROM spotify_tokens
         WHERE spotify_user_id = ?
         """,
-        (spotify_user_id,)
+        (spotify_user_id,),
     )
 
-    existing_row = cursor.fetchone()
-    existing_refresh_token = existing_row[0] if existing_row else None
-    final_refresh_token = refresh_token or existing_refresh_token
+    existing = cursor.fetchone()
+    final_refresh_token = refresh_token
 
-    cursor.execute(
+    if not final_refresh_token and existing:
+        final_refresh_token = existing["refresh_token"]
+
+    conn.execute(
         """
         INSERT OR REPLACE INTO spotify_tokens (
             spotify_user_id,
@@ -417,24 +523,23 @@ def save_spotify_token(
             access_token,
             final_refresh_token,
             expires_at,
-        )
+        ),
     )
 
     conn.commit()
     conn.close()
 
 
-def get_spotify_token(spotify_user_id):
+def get_spotify_token(spotify_user_id: str) -> dict | None:
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute(
+    cursor = conn.execute(
         """
-        SELECT access_token, refresh_token, expires_at
+        SELECT spotify_user_id, access_token, refresh_token, expires_at
         FROM spotify_tokens
         WHERE spotify_user_id = ?
         """,
-        (spotify_user_id,)
+        (spotify_user_id,),
     )
 
     row = cursor.fetchone()
@@ -444,19 +549,22 @@ def get_spotify_token(spotify_user_id):
         return None
 
     return {
-        "access_token": row[0],
-        "refresh_token": row[1],
-        "expires_at": row[2],
+        "spotify_user_id": row["spotify_user_id"],
+        "access_token": row["access_token"],
+        "refresh_token": row["refresh_token"],
+        "expires_at": row["expires_at"],
     }
 
 
-def delete_spotify_token(spotify_user_id):
+def delete_spotify_token(spotify_user_id: str):
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute(
-        "DELETE FROM spotify_tokens WHERE spotify_user_id = ?",
-        (spotify_user_id,)
+    conn.execute(
+        """
+        DELETE FROM spotify_tokens
+        WHERE spotify_user_id = ?
+        """,
+        (spotify_user_id,),
     )
 
     conn.commit()
@@ -464,15 +572,14 @@ def delete_spotify_token(spotify_user_id):
 
 
 def save_spotify_user(
-    spotify_user_id,
-    display_name=None,
-    email=None,
-    image_url=None,
+    spotify_user_id: str,
+    display_name: str | None,
+    email: str | None,
+    image_url: str | None,
 ):
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute(
+    conn.execute(
         """
         INSERT OR REPLACE INTO spotify_users (
             spotify_user_id,
@@ -481,32 +588,30 @@ def save_spotify_user(
             image_url,
             last_login
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, datetime('now'))
         """,
         (
             spotify_user_id,
             display_name,
             email,
             image_url,
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        )
+        ),
     )
 
     conn.commit()
     conn.close()
 
 
-def get_spotify_user(spotify_user_id):
+def get_spotify_user(spotify_user_id: str) -> dict | None:
     conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute(
+    cursor = conn.execute(
         """
         SELECT spotify_user_id, display_name, email, image_url, last_login
         FROM spotify_users
         WHERE spotify_user_id = ?
         """,
-        (spotify_user_id,)
+        (spotify_user_id,),
     )
 
     row = cursor.fetchone()
@@ -516,9 +621,9 @@ def get_spotify_user(spotify_user_id):
         return None
 
     return {
-        "spotify_user_id": row[0],
-        "display_name": row[1],
-        "email": row[2],
-        "image_url": row[3],
-        "last_login": row[4],
+        "spotify_user_id": row["spotify_user_id"],
+        "display_name": row["display_name"],
+        "email": row["email"],
+        "image_url": row["image_url"],
+        "last_login": row["last_login"],
     }
