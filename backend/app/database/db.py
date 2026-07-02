@@ -1,8 +1,15 @@
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any
 
-DB_PATH = Path(__file__).resolve().parent / "spotify_intelligence.db"
+DEFAULT_DB_PATH = Path(__file__).resolve().parent / "spotify_intelligence.db"
+
+DB_PATH = Path(
+    os.getenv("SQLITE_DB_PATH", str(DEFAULT_DB_PATH))
+)
+
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 def get_connection():
