@@ -1,4 +1,5 @@
 from typing import Optional
+import json
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 
@@ -59,16 +60,22 @@ def sync_user_in_background(spotify_user_id: str):
                 f"sync_error:{spotify_user_id}",
                 "Necesitas conectar Spotify nuevamente."
             )
+            save_metadata(f"sync_result:{spotify_user_id}", "")
             return
 
-        engine.sync(sp, spotify_user_id)
+        result = engine.sync(sp, spotify_user_id)
 
         save_metadata(f"sync_status:{spotify_user_id}", "completed")
+        save_metadata(
+            f"sync_result:{spotify_user_id}",
+            json.dumps(result, ensure_ascii=False),
+        )
         save_metadata(f"sync_error:{spotify_user_id}", "")
 
     except Exception as error:
         save_metadata(f"sync_status:{spotify_user_id}", "error")
         save_metadata(f"sync_error:{spotify_user_id}", str(error))
+        save_metadata(f"sync_result:{spotify_user_id}", "")
 
 
 @router.get("/load")
