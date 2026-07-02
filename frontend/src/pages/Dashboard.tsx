@@ -637,41 +637,34 @@ function Dashboard() {
   />
 </div>
 
-<details id="top-songs" className="dashboard-collapsible" open>
-  <summary>
-    <span>Top canciones</span>
-    <small>Ver / ocultar</small>
-  </summary>
-
-  <div className="dashboard-collapsible-content">
-    {isPlaylistMode ? (
-      repeatedSongsInPlaylist.length > 0 ? (
-        <TopListCard
-          label="Duplicadas"
-          title="Canciones duplicadas en esta playlist"
-          items={repeatedSongsInPlaylist}
-          unit="veces"
-        />
-      ) : (
-        <section className="discovery-card">
-          <p className="section-label">Duplicadas</p>
-          <h2>No encontramos canciones duplicadas en esta playlist.</h2>
-          <p>
-            Todas las canciones de <strong>{currentScopeLabel}</strong> aparecen
-            una sola vez.
-          </p>
-        </section>
-      )
-    ) : (
+<div id="top-songs">
+  {isPlaylistMode ? (
+    repeatedSongsInPlaylist.length > 0 ? (
       <TopListCard
-        label="Top canciones"
-        title="Tus canciones más repetidas"
-        items={stats.top_songs}
+        label="Duplicadas"
+        title="Canciones duplicadas en esta playlist"
+        items={repeatedSongsInPlaylist}
         unit="veces"
       />
-    )}
-  </div>
-</details>
+    ) : (
+      <section className="discovery-card">
+        <p className="section-label">Duplicadas</p>
+        <h2>No encontramos canciones duplicadas en esta playlist.</h2>
+        <p>
+          Todas las canciones de <strong>{currentScopeLabel}</strong> aparecen
+          una sola vez.
+        </p>
+      </section>
+    )
+  ) : (
+    <TopListCard
+      label="Top canciones"
+      title="Tus canciones más repetidas"
+      items={stats.top_songs}
+      unit="veces"
+    />
+  )}
+</div>
 
       <div id="top-albums">
   <TopListCard
