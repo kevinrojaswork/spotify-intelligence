@@ -199,10 +199,21 @@ def get_sync_status(spotify_user_id: Optional[str] = None):
     status = get_metadata(f"sync_status:{user_id}") or "idle"
     error = get_metadata(f"sync_error:{user_id}") or ""
 
+    sync_result_raw = get_metadata(f"sync_result:{user_id}")
+    sync_result = None
+
+    if sync_result_raw:
+        try:
+            sync_result = json.loads(sync_result_raw)
+        except json.JSONDecodeError:
+            sync_result = None
+
+
     return {
         "spotify_user_id": user_id,
         "status": status,
         "error": error,
+        "result": sync_result,
     }
 
 
