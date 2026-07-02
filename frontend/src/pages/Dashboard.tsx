@@ -13,6 +13,14 @@ const API_BASE_URL = "https://spotify-intelligence-production.up.railway.app";
 
 type SyncStatus = "idle" | "syncing" | "completed" | "error";
 
+type SyncResult = {
+  message?: string;
+  tracks_loaded?: number;
+  playlists_loaded?: number;
+  playlists_updated?: number;
+  playlists_skipped?: number;
+};
+
 type TopItem = {
   name: string;
   count: number;
@@ -80,6 +88,7 @@ function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isChangingScope, setIsChangingScope] = useState(false);
   const [showUpdateSuccess, setShowUpdateSuccess] = useState(false);
@@ -166,10 +175,12 @@ function Dashboard() {
 
     setSyncStatus(data.status || "idle");
     setSyncError(data.error || "");
+    setSyncResult(data.result || null);
 
     return data as {
       status: SyncStatus;
       error: string;
+      result: SyncResult | null;
     };
   };
 
@@ -494,12 +505,33 @@ function Dashboard() {
       )}
 
       {showUpdateSuccess && syncStatus === "completed" && (
-        <section className="discovery-card">
-          <p className="section-label">Análisis actualizado</p>
-          <h2>Tu análisis musical se actualizó correctamente.</h2>
-          <p>Los datos que ves abajo ya corresponden a la última sincronización.</p>
-        </section>
-      )}
+  <section className="discovery-card sync-result-card">
+    <p className="section-label">Análisis actualizado</p>
+    <h2>Tu análisis musical se actualizó correctamente.</h2>
+    <p>
+      Los datos que ves abajo ya corresponden a la última sincronización.
+    </p>
+
+    {syncResult && (
+      <div className="sync-result-grid">
+        <div>
+          <span>Playlists actualizadas</span>
+          <strong>{syncResult.playlists_updated ?? 0}</strong>
+        </div>
+
+        <div>
+          <span>Playlists sin cambios</span>
+          <strong>{syncResult.playlists_skipped ?? 0}</strong>
+        </div>
+
+        <div>
+          <span>Canciones procesadas</span>
+          <strong>{syncResult.tracks_loaded ?? 0}</strong>
+        </div>
+      </div>
+    )}
+  </section>
+)}
 
       {isPlaylistMode ? (
         <section className="discovery-card playlist-context-card">
