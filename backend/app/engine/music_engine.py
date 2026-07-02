@@ -56,8 +56,8 @@ class MusicAnalysisEngine:
 
         return tracks
 
-        def sync(self, sp, spotify_user_id: str):
-            playlists = get_all_playlists(sp)
+    def sync(self, sp, spotify_user_id: str):
+        playlists = self.get_all_playlists(sp)
 
         init_db()
 
@@ -112,7 +112,7 @@ class MusicAnalysisEngine:
                 playlists_skipped += 1
                 continue
 
-            playlist_tracks = get_all_playlist_tracks(sp, playlist_id)
+            playlist_tracks = self.get_all_playlist_tracks(sp, playlist_id)
 
             tracks_data = []
 
@@ -156,7 +156,7 @@ class MusicAnalysisEngine:
             "playlists_loaded": len(playlists),
             "playlists_updated": playlists_updated,
             "playlists_skipped": playlists_skipped,
-        }
+    }
 
     def analyze(self, spotify_user_id, spotify_playlist_id=None):
         self.tracks = get_all_tracks(
