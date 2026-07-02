@@ -725,3 +725,66 @@ html {
 #duplicate-songs {
   scroll-margin-top: 120px;
 }
+
+
+.dashboard-collapsible {
+  margin: 1.5rem 0;
+  border-radius: 28px;
+}
+
+.dashboard-collapsible > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.dashboard-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dashboard-collapsible > summary span {
+  font-size: 0.95rem;
+}
+
+.dashboard-collapsible > summary small {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.dashboard-collapsible > summary::after {
+  content: "⌄";
+  color: #1ed760;
+  font-size: 1.2rem;
+  transition: transform 0.2s ease;
+}
+
+.dashboard-collapsible[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.dashboard-collapsible-content {
+  animation: collapsibleFade 0.18s ease;
+}
+
+@keyframes collapsibleFade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
