@@ -504,6 +504,16 @@ function Dashboard() {
         </section>
       )}
 
+      <nav className="dashboard-section-nav">
+  <a href="#dashboard-summary">Resumen</a>
+  <a href="#musical-dna">ADN Musical</a>
+  <a href="#top-artists">Top artistas</a>
+  <a href="#top-songs">Top canciones</a>
+  <a href="#top-albums">Top álbumes</a>
+
+  {!isPlaylistMode && <a href="#duplicate-songs">Duplicadas</a>}
+</nav>
+
       {showUpdateSuccess && syncStatus === "completed" && (
   <section className="discovery-card sync-result-card">
     <p className="section-label">Análisis actualizado</p>
@@ -550,7 +560,7 @@ function Dashboard() {
       )}
 
       {isPlaylistMode ? (
-        <section className="playlist-mode-summary-grid">
+  <section id="dashboard-summary" className="playlist-mode-summary-grid">
           <div className="playlist-mode-stat-card">
             <span>🎵</span>
             <p>Canciones en esta playlist</p>
@@ -576,15 +586,19 @@ function Dashboard() {
 </div>
         </section>
       ) : (
-        <StatsGrid
-          totalTracks={stats.total_tracks}
-          totalPlaylists={stats.total_playlists}
-          totalArtists={stats.total_artists}
-          totalAlbums={stats.total_albums}
-        />
-      )}
+  <div id="dashboard-summary">
+    <StatsGrid
+      totalTracks={stats.total_tracks}
+      totalPlaylists={stats.total_playlists}
+      totalArtists={stats.total_artists}
+      totalAlbums={stats.total_albums}
+    />
+  </div>
+)}
 
-      <MusicalDNACard dna={stats.musical_dna} />
+      <div id="musical-dna">
+  <MusicalDNACard dna={stats.musical_dna} />
+</div>
 
       {!isPlaylistMode && <SmartInsightsCard insights={stats.smart_insights} />}
 
@@ -610,60 +624,68 @@ function Dashboard() {
         />
       )}
 
-      <TopListCard
-        label="Top artistas"
-        title={
-          isPlaylistMode
-            ? "Artistas más presentes en esta playlist"
-            : "Tus artistas más presentes"
-        }
-        items={stats.top_artists}
-        unit="canciones"
-      />
+      <div id="top-artists">
+  <TopListCard
+    label="Top artistas"
+    title={
+      isPlaylistMode
+        ? "Artistas más presentes en esta playlist"
+        : "Tus artistas más presentes"
+    }
+    items={stats.top_artists}
+    unit="canciones"
+  />
+</div>
 
-      {isPlaylistMode ? (
-  repeatedSongsInPlaylist.length > 0 ? (
+<div id="top-songs">
+  {isPlaylistMode ? (
+    repeatedSongsInPlaylist.length > 0 ? (
+      <TopListCard
+        label="Duplicadas"
+        title="Canciones duplicadas en esta playlist"
+        items={repeatedSongsInPlaylist}
+        unit="veces"
+      />
+    ) : (
+      <section className="discovery-card">
+        <p className="section-label">Duplicadas</p>
+        <h2>No encontramos canciones duplicadas en esta playlist.</h2>
+        <p>
+          Todas las canciones de <strong>{currentScopeLabel}</strong> aparecen
+          una sola vez.
+        </p>
+      </section>
+    )
+  ) : (
     <TopListCard
-      label="Duplicadas"
-      title="Canciones duplicadas en esta playlist"
-      items={repeatedSongsInPlaylist}
+      label="Top canciones"
+      title="Tus canciones más repetidas"
+      items={stats.top_songs}
       unit="veces"
     />
-  ) : (
-    <section className="discovery-card">
-      <p className="section-label">Duplicadas</p>
-      <h2>No encontramos canciones duplicadas en esta playlist.</h2>
-      <p>
-        Todas las canciones de <strong>{currentScopeLabel}</strong> aparecen una
-        sola vez.
-      </p>
-    </section>
-  )
-) : (
+  )}
+</div>
+
+      <div id="top-albums">
   <TopListCard
-    label="Top canciones"
-    title="Tus canciones más repetidas"
-    items={stats.top_songs}
-    unit="veces"
+    label="Top álbumes"
+    title={
+      isPlaylistMode
+        ? "Álbumes más presentes en esta playlist"
+        : "Tus álbumes más presentes"
+    }
+    items={stats.top_albums}
+    unit="canciones"
   />
-)}
+</div>
 
-      <TopListCard
-        label="Top álbumes"
-        title={
-          isPlaylistMode
-            ? "Álbumes más presentes en esta playlist"
-            : "Tus álbumes más presentes"
-        }
-        items={stats.top_albums}
-        unit="canciones"
-      />
-
-      {!isPlaylistMode && (
-  <DuplicateSongsCard
-    songs={stats.duplicate_songs}
-    duplicatePercentage={stats.duplicate_percentage}
-  />
+{!isPlaylistMode && (
+  <div id="duplicate-songs">
+    <DuplicateSongsCard
+      songs={stats.duplicate_songs}
+      duplicatePercentage={stats.duplicate_percentage}
+    />
+  </div>
 )}
 
     </div>
