@@ -669,6 +669,9 @@
 
 
 .dashboard-section-nav {
+  position: sticky;
+  top: 16px;
+  z-index: 20;
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -712,4 +715,13 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+#dashboard-summary,
+#musical-dna,
+#top-artists,
+#top-songs,
+#top-albums,
+#duplicate-songs {
+  scroll-margin-top: 120px;
 }
