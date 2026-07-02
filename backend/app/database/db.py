@@ -146,10 +146,16 @@ def init_db():
 
 def normalize_artists(artists: Any) -> str:
     if isinstance(artists, list):
-        return ", ".join(artists)
+        clean_artists = [
+            str(artist).strip()
+            for artist in artists
+            if artist is not None and str(artist).strip()
+        ]
+
+        return ", ".join(clean_artists)
 
     if isinstance(artists, str):
-        return artists
+        return artists.strip()
 
     return ""
 

@@ -123,9 +123,10 @@ class MusicAnalysisEngine:
                     continue
 
                 artists = [
-                    artist.get("name", "Artista desconocido")
-                    for artist in track.get("artists", [])
-                ]
+    artist.get("name") or "Artista desconocido"
+    for artist in track.get("artists", [])
+    if artist
+]
 
                 album = track.get("album") or {}
 
