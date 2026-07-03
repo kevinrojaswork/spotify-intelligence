@@ -26,6 +26,8 @@ type TopItem = {
   count: number;
 };
 
+
+
 type DuplicateSong = {
   name: string;
   playlist_count: number;
@@ -81,6 +83,12 @@ type DashboardStats = {
   last_sync: string | null;
 };
 
+type TopListKey = "top-artists" | "top-songs" | "top-albums";
+
+const TOP_LIST_PREVIEW_LIMIT = 5;
+
+
+
 function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
@@ -93,6 +101,13 @@ function Dashboard() {
   const [isChangingScope, setIsChangingScope] = useState(false);
   const [showUpdateSuccess, setShowUpdateSuccess] = useState(false);
   const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
+  const [expandedTopLists, setExpandedTopLists] = useState<
+  Record<TopListKey, boolean>
+>({
+  "top-artists": false,
+  "top-songs": false,
+  "top-albums": false,
+});
 
   const getSpotifyUserId = () => {
     return localStorage.getItem("spotify_user_id");
@@ -340,6 +355,41 @@ function Dashboard() {
   const repeatedSongsInPlaylist = stats
   ? stats.top_songs.filter((song) => song.count >= 2)
   : [];
+
+const getVisibleTopItems = (items: TopItem[], key: TopListKey) => {
+  if (expandedTopLists[key]) {
+    return items;
+  }
+
+  return items.slice(0, TOP_LIST_PREVIEW_LIMIT);
+};
+
+const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
+  if (items.length <= TOP_LIST_PREVIEW_LIMIT) {
+    return null;
+  }
+
+  const isExpanded = expandedTopLists[key];
+
+  return (
+    <button
+      type="button"
+      className="show-more-list-button"
+      onClick={() =>
+        setExpandedTopLists((currentState) => ({
+          ...currentState,
+          [key]: !currentState[key],
+        }))
+      }
+    >
+      {isExpanded
+        ? "Ver menos"
+        : `Ver más (${items.length - TOP_LIST_PREVIEW_LIMIT} más)`}
+    </button>
+  );
+};
+
+
 
   if (isLoading) {
     return (
@@ -632,20 +682,28 @@ function Dashboard() {
         ? "Artistas más presentes en esta playlist"
         : "Tus artistas más presentes"
     }
-    items={stats.top_artists}
+    items={getVisibleTopItems(stats.top_artists, "top-artists")}
     unit="canciones"
   />
+
+{renderTopListToggle(stats.top_artists, "top-artists")}
+
+
 </div>
 
 <div id="top-songs">
   {isPlaylistMode ? (
     repeatedSongsInPlaylist.length > 0 ? (
-      <TopListCard
-        label="Duplicadas"
-        title="Canciones duplicadas en esta playlist"
-        items={repeatedSongsInPlaylist}
-        unit="veces"
-      />
+      <>
+        <TopListCard
+          label="Duplicadas"
+          title="Canciones duplicadas en esta playlist"
+          items={getVisibleTopItems(repeatedSongsInPlaylist, "top-songs")}
+          unit="veces"
+        />
+
+        {renderTopListToggle(repeatedSongsInPlaylist, "top-songs")}
+      </>
     ) : (
       <section className="discovery-card">
         <p className="section-label">Duplicadas</p>
@@ -657,12 +715,16 @@ function Dashboard() {
       </section>
     )
   ) : (
-    <TopListCard
-      label="Top canciones"
-      title="Tus canciones más repetidas"
-      items={stats.top_songs}
-      unit="veces"
-    />
+    <>
+      <TopListCard
+        label="Top canciones"
+        title="Tus canciones más repetidas"
+        items={getVisibleTopItems(stats.top_songs, "top-songs")}
+        unit="veces"
+      />
+
+      {renderTopListToggle(stats.top_songs, "top-songs")}
+    </>
   )}
 </div>
 
@@ -674,9 +736,12 @@ function Dashboard() {
         ? "Álbumes más presentes en esta playlist"
         : "Tus álbumes más presentes"
     }
-    items={stats.top_albums}
+    items={getVisibleTopItems(stats.top_albums, "top-albums")}
     unit="canciones"
   />
+
+{renderTopListToggle(stats.top_albums, "top-albums")}
+
 </div>
 
 {!isPlaylistMode && (

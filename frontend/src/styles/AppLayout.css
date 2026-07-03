@@ -725,3 +725,23 @@ html {
 #duplicate-songs {
   scroll-margin-top: 120px;
 }
+
+
+.show-more-list-button {
+  display: block;
+  margin: 0.85rem auto 1.75rem;
+  padding: 0.75rem 1.1rem;
+  border: 1px solid rgba(30, 215, 96, 0.3);
+  border-radius: 999px;
+  background: rgba(30, 215, 96, 0.12);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.show-more-list-button:hover {
+  transform: translateY(-2px);
+  background: rgba(30, 215, 96, 0.2);
+}
