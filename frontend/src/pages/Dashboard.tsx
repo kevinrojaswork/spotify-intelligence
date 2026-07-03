@@ -225,6 +225,7 @@ function Dashboard() {
       }
     };
 
+
     const loadValidDashboard = async () => {
   const playlistList = await loadPlaylists(spotifyUserId);
   const validPlaylistId = resolveValidPlaylistId(
@@ -243,6 +244,7 @@ function Dashboard() {
     await loadDashboard(spotifyUserId, "");
   }
 };
+
 
     const checkUntilSyncFinishes = async () => {
       try {
