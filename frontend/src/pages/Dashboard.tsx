@@ -228,6 +228,7 @@ function Dashboard() {
 
     const loadValidDashboard = async () => {
   const playlistList = await loadPlaylists(spotifyUserId);
+
   const validPlaylistId = resolveValidPlaylistId(
     storedPlaylistId,
     playlistList
@@ -235,14 +236,22 @@ function Dashboard() {
 
   setSelectedPlaylistId(validPlaylistId);
 
-  const dashboardData = await loadDashboard(spotifyUserId, validPlaylistId);
+  let dashboardData = await loadDashboard(spotifyUserId, validPlaylistId);
 
   if (validPlaylistId && dashboardData.total_tracks === 0) {
     localStorage.removeItem("selected_playlist_id");
     setSelectedPlaylistId("");
 
-    await loadDashboard(spotifyUserId, "");
+    dashboardData = await loadDashboard(spotifyUserId, "");
   }
+
+  if (!validPlaylistId && dashboardData.total_tracks === 0 && playlistList.length > 0) {
+    await new Promise((resolve) => window.setTimeout(resolve, 1200));
+
+    dashboardData = await loadDashboard(spotifyUserId, "");
+  }
+
+  return dashboardData;
 };
 
 
@@ -282,11 +291,9 @@ function Dashboard() {
       try {
         const statusData = await loadSyncStatus(spotifyUserId);
 
-        try {
-          await loadValidDashboard();
-        } catch (dashboardError) {
-          console.error("Dashboard todavía no disponible:", dashboardError);
-        }
+        
+        await loadValidDashboard();
+
 
         if (statusData.status === "completed") {
           markUpdateCompleted();
