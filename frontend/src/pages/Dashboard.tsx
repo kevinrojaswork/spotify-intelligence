@@ -221,16 +221,23 @@ function Dashboard() {
     };
 
     const loadValidDashboard = async () => {
-      const playlistList = await loadPlaylists(spotifyUserId);
-      const validPlaylistId = resolveValidPlaylistId(
-        storedPlaylistId,
-        playlistList
-      );
+  const playlistList = await loadPlaylists(spotifyUserId);
+  const validPlaylistId = resolveValidPlaylistId(
+    storedPlaylistId,
+    playlistList
+  );
 
-      setSelectedPlaylistId(validPlaylistId);
+  setSelectedPlaylistId(validPlaylistId);
 
-      await loadDashboard(spotifyUserId, validPlaylistId);
-    };
+  const dashboardData = await loadDashboard(spotifyUserId, validPlaylistId);
+
+  if (validPlaylistId && dashboardData.total_tracks === 0) {
+    localStorage.removeItem("selected_playlist_id");
+    setSelectedPlaylistId("");
+
+    await loadDashboard(spotifyUserId, "");
+  }
+};
 
     const checkUntilSyncFinishes = async () => {
       try {
