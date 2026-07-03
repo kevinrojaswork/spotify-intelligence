@@ -746,3 +746,12 @@ html {
   transform: translateY(-2px);
   background: rgba(30, 215, 96, 0.2);
 }
+
+
+.duplicate-playlists-preview {
+  margin-top: 0.35rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
