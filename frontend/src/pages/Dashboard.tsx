@@ -83,7 +83,11 @@ type DashboardStats = {
   last_sync: string | null;
 };
 
-type TopListKey = "top-artists" | "top-songs" | "top-albums";
+type TopListKey =
+  | "top-playlists"
+  | "top-artists"
+  | "top-songs"
+  | "top-albums";
 
 const TOP_LIST_PREVIEW_LIMIT = 5;
 
@@ -104,6 +108,7 @@ function Dashboard() {
   const [expandedTopLists, setExpandedTopLists] = useState<
   Record<TopListKey, boolean>
 >({
+  "top-playlists": false,
   "top-artists": false,
   "top-songs": false,
   "top-albums": false,
@@ -564,7 +569,11 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       <nav className="dashboard-section-nav">
   <a href="#dashboard-summary">Resumen</a>
   <a href="#musical-dna">ADN Musical</a>
-  <a href="#top-artists">Top artistas</a>
+
+
+{!isPlaylistMode && <a href="#top-playlists">Top playlists</a>}
+
+ <a href="#top-artists">Top artistas</a>
   <a href="#top-songs">Top canciones</a>
   <a href="#top-albums">Top álbumes</a>
 
@@ -673,13 +682,17 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       )}
 
       {!isPlaylistMode && (
-        <TopListCard
-          label="Top playlists"
-          title="Tus playlists más grandes"
-          items={stats.top_playlists}
-          unit="canciones"
-        />
-      )}
+  <div id="top-playlists">
+    <TopListCard
+      label="Top playlists"
+      title="Tus playlists más grandes"
+      items={getVisibleTopItems(stats.top_playlists, "top-playlists")}
+      unit="canciones"
+    />
+
+    {renderTopListToggle(stats.top_playlists, "top-playlists")}
+  </div>
+)}
 
       <div id="top-artists">
   <TopListCard
