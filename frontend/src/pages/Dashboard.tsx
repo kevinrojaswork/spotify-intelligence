@@ -490,13 +490,18 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       <div className="dashboard">
         <section className="discovery-card">
           <p className="section-label">Acción necesaria</p>
-          <h2>{error}</h2>
-          <p>
-            Usa el botón superior para conectar o actualizar Spotify y reconstruir
-            tu análisis musical.
-          </p>
+<h2>No pudimos mostrar tu análisis guardado.</h2>
+<p>
+  Intenta recargar la página. Si el problema continúa, presiona{" "}
+  <strong>Actualizar análisis</strong> para sincronizar Spotify nuevamente.
+</p>
 
-          {syncError && <p>Error técnico: {syncError}</p>}
+          {syncError && (
+  <details className="technical-error-details">
+    <summary>Ver detalles técnicos</summary>
+    <p>{syncError}</p>
+  </details>
+)}
         </section>
       </div>
     );
@@ -522,13 +527,12 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     return (
       <div className="dashboard">
         <section className="discovery-card">
-          <p className="section-label">Sin datos todavía</p>
-          <h2>No encontramos canciones guardadas para este análisis.</h2>
-          <p>
-            Usa el botón superior para actualizar Spotify. Si acabamos de
-            agregar el selector de playlists, necesitas actualizar el análisis
-            una vez para llenar los nuevos datos.
-          </p>
+          <p className="section-label">Análisis no disponible</p>
+<h2>Todavía no hay datos musicales guardados.</h2>
+<p>
+  Presiona <strong>Actualizar análisis</strong> para sincronizar tu cuenta de
+  Spotify por primera vez. Después, tus datos se cargarán automáticamente.
+</p>
         </section>
       </div>
     );
