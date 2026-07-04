@@ -777,3 +777,59 @@ html {
   color: rgba(255, 255, 255, 0.68);
   word-break: break-word;
 }
+
+
+.cached-data-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  text-align: left;
+}
+
+.cached-data-card h2 {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 1.45rem;
+}
+
+.cached-data-card p {
+  margin: 0;
+}
+
+.cached-data-meta {
+  min-width: 220px;
+  padding: 1rem;
+  border-radius: 20px;
+  background: rgba(30, 215, 96, 0.1);
+  border: 1px solid rgba(30, 215, 96, 0.22);
+  text-align: center;
+}
+
+.cached-data-meta span {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.cached-data-meta strong {
+  display: block;
+  color: #ffffff;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 760px) {
+  .cached-data-card {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .cached-data-meta {
+    min-width: 0;
+  }
+}

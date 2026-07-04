@@ -437,6 +437,28 @@ function Dashboard() {
   ? stats.top_songs.filter((song) => song.count >= 2)
   : [];
 
+  const formatLastSync = (value: string | null) => {
+    if (!value) {
+      return "Sin fecha registrada";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return date.toLocaleString("es-NI", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+
+
 const getVisibleTopItems = (items: TopItem[], key: TopListKey) => {
   if (expandedTopLists[key]) {
     return items;
@@ -626,6 +648,24 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           )}
         </div>
       </section>
+
+{syncStatus !== "syncing" && (
+  <section className="discovery-card cached-data-card">
+    <div>
+      <p className="section-label">Datos guardados</p>
+      <h2>Estás viendo tu análisis guardado.</h2>
+      <p>
+        Solo necesitas presionar <strong>Actualizar análisis</strong> cuando
+        hayas cambiado tus playlists en Spotify.
+      </p>
+    </div>
+
+    <div className="cached-data-meta">
+      <span>Última sincronización</span>
+      <strong>{formatLastSync(stats.last_sync)}</strong>
+    </div>
+  </section>
+)}
 
       {syncStatus === "syncing" && (
         <section className="discovery-card loading-card">
