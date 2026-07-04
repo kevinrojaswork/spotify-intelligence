@@ -16,6 +16,7 @@ from app.database.db import (
     save_spotify_user,
     get_user_playlists,
     save_user_playlists,
+    get_all_tracks,
 )
 
 router = APIRouter()
@@ -43,6 +44,35 @@ def get_all_spotify_playlists(sp):
             break
 
     return playlists
+
+def get_cached_playlists_from_tracks(spotify_user_id: str):
+    tracks = get_all_tracks(spotify_user_id)
+
+    playlist_map = {}
+
+    for track in tracks:
+        playlist_id = track.get("spotify_playlist_id")
+        playlist_name = track.get("playlist") or "Sin nombre"
+
+        if not playlist_id:
+            continue
+
+        if playlist_id not in playlist_map:
+            playlist_map[playlist_id] = {
+                "spotify_playlist_id": playlist_id,
+                "name": playlist_name,
+                "total_tracks": 0,
+                "owner_name": "Desconocido",
+                "is_public": False,
+                "snapshot_id": None,
+            }
+
+        playlist_map[playlist_id]["total_tracks"] += 1
+
+    return sorted(
+        playlist_map.values(),
+        key=lambda playlist: playlist["name"].lower(),
+    )
 
 
 def sync_user_in_background(spotify_user_id: str):
@@ -169,17 +199,27 @@ def get_analysis_playlists(spotify_user_id: Optional[str] = None):
             "needs_reconnect": False,
         }
 
+    cached_playlists = get_cached_playlists_from_tracks(user_id)
+
+    if cached_playlists:
+        return {
+            "spotify_user_id": user_id,
+            "playlists": cached_playlists,
+            "source": "tracks_cache",
+            "needs_reconnect": False,
+        }
+
     sp = get_spotify_client(user_id)
 
     if not sp:
         return {
             "spotify_user_id": user_id,
             "playlists": [],
-            "source": "database_empty",
+            "source": "empty_cache",
             "needs_reconnect": True,
             "message": (
-                "No pudimos cargar tus playlists porque la sesión de Spotify "
-                "expiró. El análisis guardado puede seguir funcionando."
+                "La sesión de Spotify expiró, pero esto no debe bloquear "
+                "el análisis guardado."
             ),
         }
 
@@ -197,11 +237,11 @@ def get_analysis_playlists(spotify_user_id: Optional[str] = None):
         }
 
     except Exception as error:
-        playlists = get_user_playlists(user_id)
+        cached_playlists = get_cached_playlists_from_tracks(user_id)
 
         return {
             "spotify_user_id": user_id,
-            "playlists": playlists,
+            "playlists": cached_playlists,
             "source": "spotify_error",
             "needs_reconnect": True,
             "message": str(error),
