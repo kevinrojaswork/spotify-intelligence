@@ -10,6 +10,8 @@ DB_PATH = Path(
 )
 
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+ 
+ 
 
 
 def get_connection():
