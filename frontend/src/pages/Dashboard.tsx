@@ -182,49 +182,79 @@ function Dashboard() {
 };
 
 
-
   const loadPlaylists = async (spotifyUserId: string) => {
-    const response = await fetch(
-      `${API_BASE_URL}/analysis-playlists?spotify_user_id=${encodeURIComponent(
-        spotifyUserId
-      )}`
-    );
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/analysis-playlists?spotify_user_id=${encodeURIComponent(
+          spotifyUserId
+        )}`
+      );
 
-    if (!response.ok) {
-      throw new Error("No se pudieron cargar las playlists.");
+      if (response.status === 401) {
+        console.warn(
+          "No se pudieron cargar las playlists porque la sesión de Spotify expiró. Mostrando análisis guardado."
+        );
+
+        localStorage.removeItem("selected_playlist_id");
+        setSelectedPlaylistId("");
+        setPlaylists([]);
+
+        return [] as PlaylistOption[];
+      }
+
+      if (!response.ok) {
+        console.warn("No se pudieron cargar las playlists. Mostrando biblioteca.");
+
+        localStorage.removeItem("selected_playlist_id");
+        setSelectedPlaylistId("");
+        setPlaylists([]);
+
+        return [] as PlaylistOption[];
+      }
+
+      const data = await response.json();
+      const playlistList = data.playlists || [];
+
+      setPlaylists(playlistList);
+
+      return playlistList as PlaylistOption[];
+    } catch (error) {
+      console.error("Error cargando playlists:", error);
+
+      localStorage.removeItem("selected_playlist_id");
+      setSelectedPlaylistId("");
+      setPlaylists([]);
+
+      return [] as PlaylistOption[];
     }
-
-    const data = await response.json();
-    const playlistList = data.playlists || [];
-
-    setPlaylists(playlistList);
-
-    return playlistList as PlaylistOption[];
   };
 
-  const loadSyncStatus = async (spotifyUserId: string) => {
-    const response = await fetch(
-      `${API_BASE_URL}/sync-status?spotify_user_id=${encodeURIComponent(
-        spotifyUserId
-      )}`
-    );
+const loadSyncStatus = async (spotifyUserId: string) => {
+  const response = await fetch(
+    `${API_BASE_URL}/sync-status?spotify_user_id=${encodeURIComponent(
+      spotifyUserId
+    )}`
+  );
 
-    if (!response.ok) {
-      throw new Error("No se pudo revisar el estado de sincronización.");
-    }
+  if (!response.ok) {
+    throw new Error("No se pudo revisar el estado de sincronización.");
+  }
 
-    const data = await response.json();
+  const data = await response.json();
 
-    setSyncStatus(data.status || "idle");
-    setSyncError(data.error || "");
-    setSyncResult(data.result || null);
+  setSyncStatus(data.status || "idle");
+  setSyncError(data.error || "");
+  setSyncResult(data.result || null);
 
-    return data as {
-      status: SyncStatus;
-      error: string;
-      result: SyncResult | null;
-    };
+  return data as {
+    status: SyncStatus;
+    error: string;
+    result: SyncResult | null;
   };
+};
+
+
+
 
   useEffect(() => {
   const spotifyUserId = getSpotifyUserId();
@@ -450,6 +480,9 @@ function Dashboard() {
     ? selectedPlaylist.name
     : "Toda mi biblioteca";
 
+    const availablePlaylistCount =
+  playlists.length > 0 ? playlists.length : stats?.total_playlists ?? 0;
+
   const isPlaylistMode = Boolean(selectedPlaylistId);
 
   const playlistDiscovery = stats?.dominant_artist
@@ -600,7 +633,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           </p>
 
           <span className="playlist-count-label">
-            {playlists.length} playlists disponibles
+            {availablePlaylistCount} playlists disponibles
           </span>
         </div>
 
