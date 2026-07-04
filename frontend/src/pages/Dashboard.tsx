@@ -139,27 +139,49 @@ function Dashboard() {
   };
 
   const loadDashboard = async (
-    spotifyUserId: string,
-    playlistId?: string
-  ) => {
-    const playlistQuery = playlistId
-      ? `&playlist_id=${encodeURIComponent(playlistId)}`
-      : "";
+  spotifyUserId: string,
+  playlistId?: string
+) => {
+  const playlistQuery = playlistId
+    ? `&playlist_id=${encodeURIComponent(playlistId)}`
+    : "";
 
-    const response = await fetch(
-      `${API_BASE_URL}/dashboard?spotify_user_id=${encodeURIComponent(
-        spotifyUserId
-      )}${playlistQuery}`
-    );
+  const response = await fetch(
+    `${API_BASE_URL}/dashboard?spotify_user_id=${encodeURIComponent(
+      spotifyUserId
+    )}${playlistQuery}`
+  );
 
-    if (!response.ok) {
-      throw new Error("No se pudo cargar el dashboard.");
-    }
+  const responseText = await response.text();
 
-    const data = await response.json();
-    setStats(data);
-    return data as DashboardStats;
-  };
+  let data: DashboardStats;
+
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    console.error("Respuesta inválida del dashboard:", responseText);
+    throw new Error("No se pudo interpretar la respuesta del dashboard.");
+  }
+
+  if (!response.ok) {
+    console.error("Error cargando dashboard:", {
+      status: response.status,
+      data,
+    });
+
+    throw new Error("No se pudo cargar el dashboard.");
+  }
+
+  setStats(data);
+
+  if (data.total_tracks > 0) {
+    setError(null);
+  }
+
+  return data;
+};
+
+
 
   const loadPlaylists = async (spotifyUserId: string) => {
     const response = await fetch(
@@ -365,6 +387,7 @@ function Dashboard() {
           statusData.error ||
             "Ocurrió un error mientras sincronizábamos Spotify."
         );
+          setSyncStatus("error");
       }
 
       setIsLoading(false);
@@ -507,7 +530,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     );
   }
 
-  if (error) {
+  if (error && (!stats || stats.total_tracks === 0)) {
     return (
       <div className="dashboard">
         <section className="discovery-card">
