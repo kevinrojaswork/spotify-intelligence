@@ -205,128 +205,188 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    const spotifyUserId = getSpotifyUserId();
-    const storedPlaylistId = localStorage.getItem("selected_playlist_id") || "";
-    const updateStarted =
-      localStorage.getItem("analysis_update_started") === "true";
+  const spotifyUserId = getSpotifyUserId();
+  const updateStarted =
+    localStorage.getItem("analysis_update_started") === "true";
 
-    if (!spotifyUserId) {
-      setError("No hay una cuenta de Spotify conectada.");
-      setIsLoading(false);
-      return;
+  if (!spotifyUserId) {
+    setError("No hay una cuenta de Spotify conectada.");
+    setIsLoading(false);
+    return;
+  }
+
+  let intervalId: number | undefined;
+  let isMounted = true;
+
+  const markUpdateCompleted = () => {
+    if (updateStarted) {
+      setShowUpdateSuccess(true);
+      localStorage.removeItem("analysis_update_started");
+    }
+  };
+
+  const loadCachedDashboardFirst = async () => {
+    setError(null);
+
+    let dashboardData = await loadDashboard(spotifyUserId, "");
+
+    if (!isMounted) {
+      return dashboardData;
     }
 
-    let intervalId: number | undefined;
+    let playlistList: PlaylistOption[] = [];
 
-    const markUpdateCompleted = () => {
-      if (updateStarted) {
-        setShowUpdateSuccess(true);
+    try {
+      playlistList = await loadPlaylists(spotifyUserId);
+    } catch (playlistError) {
+      console.error(
+        "No se pudieron cargar las playlists, pero sí cargamos la biblioteca:",
+        playlistError
+      );
+
+      localStorage.removeItem("selected_playlist_id");
+      setSelectedPlaylistId("");
+
+      return dashboardData;
+    }
+
+    const storedPlaylistId =
+      localStorage.getItem("selected_playlist_id") || "";
+
+    const validPlaylistId = resolveValidPlaylistId(
+      storedPlaylistId,
+      playlistList
+    );
+
+    setSelectedPlaylistId(validPlaylistId);
+
+    if (!validPlaylistId) {
+      return dashboardData;
+    }
+
+    try {
+      const playlistDashboardData = await loadDashboard(
+        spotifyUserId,
+        validPlaylistId
+      );
+
+      if (playlistDashboardData.total_tracks === 0) {
+        localStorage.removeItem("selected_playlist_id");
+        setSelectedPlaylistId("");
+
+        dashboardData = await loadDashboard(spotifyUserId, "");
+        return dashboardData;
+      }
+
+      return playlistDashboardData;
+    } catch (playlistDashboardError) {
+      console.error(
+        "No se pudo cargar la playlist seleccionada, volviendo a biblioteca:",
+        playlistDashboardError
+      );
+
+      localStorage.removeItem("selected_playlist_id");
+      setSelectedPlaylistId("");
+
+      dashboardData = await loadDashboard(spotifyUserId, "");
+      return dashboardData;
+    }
+  };
+
+  const checkUntilSyncFinishes = async () => {
+    try {
+      const statusData = await loadSyncStatus(spotifyUserId);
+
+      if (statusData.status === "completed") {
+        if (intervalId) {
+          window.clearInterval(intervalId);
+        }
+
+        await loadCachedDashboardFirst();
+        markUpdateCompleted();
+        setIsLoading(false);
+      }
+
+      if (statusData.status === "error") {
+        if (intervalId) {
+          window.clearInterval(intervalId);
+        }
+
         localStorage.removeItem("analysis_update_started");
+        setSyncError(
+          statusData.error ||
+            "Ocurrió un error mientras sincronizábamos Spotify."
+        );
+        setSyncStatus("error");
+        setIsLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Error revisando sincronización:", error);
+    }
+  };
 
+  const start = async () => {
+    try {
+      await loadCachedDashboardFirst();
 
-    const loadValidDashboard = async () => {
-  const playlistList = await loadPlaylists(spotifyUserId);
+      let statusData: {
+        status: SyncStatus;
+        error: string;
+        result: SyncResult | null;
+      } | null = null;
 
-  const validPlaylistId = resolveValidPlaylistId(
-    storedPlaylistId,
-    playlistList
-  );
-
-  setSelectedPlaylistId(validPlaylistId);
-
-  let dashboardData = await loadDashboard(spotifyUserId, validPlaylistId);
-
-  if (validPlaylistId && dashboardData.total_tracks === 0) {
-    localStorage.removeItem("selected_playlist_id");
-    setSelectedPlaylistId("");
-
-    dashboardData = await loadDashboard(spotifyUserId, "");
-  }
-
-  if (!validPlaylistId && dashboardData.total_tracks === 0 && playlistList.length > 0) {
-    await new Promise((resolve) => window.setTimeout(resolve, 1200));
-
-    dashboardData = await loadDashboard(spotifyUserId, "");
-  }
-
-  return dashboardData;
-};
-
-
-    const checkUntilSyncFinishes = async () => {
       try {
-        const statusData = await loadSyncStatus(spotifyUserId);
+        statusData = await loadSyncStatus(spotifyUserId);
+      } catch (statusError) {
+        console.error(
+          "No se pudo revisar el estado de sincronización, pero el dashboard ya cargó:",
+          statusError
+        );
 
-        if (statusData.status === "completed") {
-          if (intervalId) {
-            window.clearInterval(intervalId);
-          }
-
-          await loadValidDashboard();
-          markUpdateCompleted();
-          setIsLoading(false);
-        }
-
-        if (statusData.status === "error") {
-          if (intervalId) {
-            window.clearInterval(intervalId);
-          }
-
-          localStorage.removeItem("analysis_update_started");
-
-          setError(
-            statusData.error ||
-              "Ocurrió un error mientras sincronizábamos Spotify."
-          );
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Error revisando sincronización:", error);
+        setSyncStatus("completed");
+        setSyncError("");
       }
-    };
 
-    const start = async () => {
-      try {
-        const statusData = await loadSyncStatus(spotifyUserId);
+      if (statusData?.status === "completed") {
+        markUpdateCompleted();
+      }
 
-        
-        await loadValidDashboard();
-
-
-        if (statusData.status === "completed") {
-          markUpdateCompleted();
-        }
-
-        if (statusData.status === "syncing") {
+      if (statusData?.status === "syncing") {
+        if (updateStarted) {
           intervalId = window.setInterval(checkUntilSyncFinishes, 4000);
+        } else {
+          setSyncStatus("completed");
         }
-
-        if (statusData.status === "error") {
-          localStorage.removeItem("analysis_update_started");
-          setError(
-            statusData.error ||
-              "Ocurrió un error mientras sincronizábamos Spotify."
-          );
-        }
-
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error inicial cargando dashboard:", error);
-        setError("No se pudo cargar tu análisis musical.");
-        setIsLoading(false);
       }
-    };
 
-    start();
-
-    return () => {
-      if (intervalId) {
-        window.clearInterval(intervalId);
+      if (statusData?.status === "error") {
+        localStorage.removeItem("analysis_update_started");
+        setSyncError(
+          statusData.error ||
+            "Ocurrió un error mientras sincronizábamos Spotify."
+        );
       }
-    };
-  }, []);
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error inicial cargando dashboard:", error);
+      setError("No se pudo cargar tu análisis musical.");
+      setIsLoading(false);
+    }
+  };
+
+  start();
+
+  return () => {
+    isMounted = false;
+
+    if (intervalId) {
+      window.clearInterval(intervalId);
+    }
+  };
+}, []);
+
+
 
   const handlePlaylistChange = async (
     event: ChangeEvent<HTMLSelectElement>
