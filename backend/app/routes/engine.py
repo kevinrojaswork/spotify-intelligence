@@ -165,25 +165,47 @@ def get_analysis_playlists(spotify_user_id: Optional[str] = None):
         return {
             "spotify_user_id": user_id,
             "playlists": playlists,
+            "source": "database",
+            "needs_reconnect": False,
         }
 
     sp = get_spotify_client(user_id)
 
     if not sp:
-        raise HTTPException(
-            status_code=401,
-            detail="Tu sesión de Spotify expiró. Conecta Spotify nuevamente."
-        )
+        return {
+            "spotify_user_id": user_id,
+            "playlists": [],
+            "source": "database_empty",
+            "needs_reconnect": True,
+            "message": (
+                "No pudimos cargar tus playlists porque la sesión de Spotify "
+                "expiró. El análisis guardado puede seguir funcionando."
+            ),
+        }
 
-    spotify_playlists = get_all_spotify_playlists(sp)
-    save_user_playlists(user_id, spotify_playlists)
+    try:
+        spotify_playlists = get_all_spotify_playlists(sp)
+        save_user_playlists(user_id, spotify_playlists)
 
-    playlists = get_user_playlists(user_id)
+        playlists = get_user_playlists(user_id)
 
-    return {
-        "spotify_user_id": user_id,
-        "playlists": playlists,
-    }
+        return {
+            "spotify_user_id": user_id,
+            "playlists": playlists,
+            "source": "spotify",
+            "needs_reconnect": False,
+        }
+
+    except Exception as error:
+        playlists = get_user_playlists(user_id)
+
+        return {
+            "spotify_user_id": user_id,
+            "playlists": playlists,
+            "source": "spotify_error",
+            "needs_reconnect": True,
+            "message": str(error),
+        }
 
 
 @router.get("/sync-status")
