@@ -3,7 +3,13 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.database.db import init_db
 from app.routes import auth, profile, playlists, artists, songs, engine
+
+
+# Ejecuta migraciones al iniciar el backend.
+# Esto asegura que la base persistente tenga las columnas nuevas.
+init_db()
 
 
 fastapi_app = FastAPI(title="Spotify Intelligence API")
