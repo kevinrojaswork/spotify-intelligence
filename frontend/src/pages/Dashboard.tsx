@@ -101,6 +101,7 @@ function Dashboard() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncError, setSyncError] = useState("");
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [needsReconnect, setNeedsReconnect] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isChangingScope, setIsChangingScope] = useState(false);
   const [showUpdateSuccess, setShowUpdateSuccess] = useState(false);
@@ -195,12 +196,14 @@ function Dashboard() {
           "No se pudieron cargar las playlists porque la sesión de Spotify expiró. Mostrando análisis guardado."
         );
 
+        setNeedsReconnect(true);
         localStorage.removeItem("selected_playlist_id");
         setSelectedPlaylistId("");
         setPlaylists([]);
 
         return [] as PlaylistOption[];
       }
+
 
       if (!response.ok) {
         console.warn("No se pudieron cargar las playlists. Mostrando biblioteca.");
@@ -215,12 +218,14 @@ function Dashboard() {
       const data = await response.json();
       const playlistList = data.playlists || [];
 
+      setNeedsReconnect(Boolean(data.needs_reconnect));
       setPlaylists(playlistList);
 
       return playlistList as PlaylistOption[];
     } catch (error) {
       console.error("Error cargando playlists:", error);
 
+      setNeedsReconnect(true);
       localStorage.removeItem("selected_playlist_id");
       setSelectedPlaylistId("");
       setPlaylists([]);
@@ -252,8 +257,6 @@ const loadSyncStatus = async (spotifyUserId: string) => {
     result: SyncResult | null;
   };
 };
-
-
 
 
   useEffect(() => {
@@ -722,6 +725,19 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     </div>
   </section>
 )}
+
+{needsReconnect && syncStatus !== "syncing" && (
+    <section className="discovery-card reconnect-warning-card">
+      <p className="section-label">Reconexión recomendada</p>
+
+      <h2>Tu análisis guardado está disponible.</h2>
+
+      <p>
+        Puedes seguir viendo tus datos guardados. Para sincronizar cambios nuevos
+        de Spotify, vuelve a conectar tu cuenta usando <strong>Cambiar cuenta</strong>.
+      </p>
+    </section>
+  )}
 
       {syncStatus === "syncing" && (
         <section className="discovery-card loading-card">

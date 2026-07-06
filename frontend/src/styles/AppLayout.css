@@ -833,3 +833,22 @@ html {
     min-width: 0;
   }
 }
+
+
+.reconnect-warning-card {
+  text-align: center;
+  border-color: rgba(255, 193, 7, 0.22);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 193, 7, 0.1),
+    rgba(255, 255, 255, 0.045)
+  );
+}
+
+.reconnect-warning-card h2 {
+  margin: 0.35rem 0 0.6rem;
+}
+
+.reconnect-warning-card strong {
+  color: #1ed760;
+}
