@@ -852,3 +852,6 @@ html {
 .reconnect-warning-card strong {
   color: #1ed760;
 }
+
+
+/* Stability test: frontend-only deploy */
