@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database.db import init_db, DB_PATH, get_connection
+from app.database.db import init_db
 from app.routes import auth, profile, playlists, artists, songs, engine
 
 
@@ -26,37 +26,6 @@ def health():
         "status": "ok",
         "service": "spotify-intelligence-backend",
     }
-
-
-@fastapi_app.get("/debug-db")
-def debug_db():
-    init_db()
-
-    conn = get_connection()
-
-    tracks = conn.execute(
-        "SELECT COUNT(*) AS total FROM tracks"
-    ).fetchone()["total"]
-
-    playlists = conn.execute(
-        "SELECT COUNT(*) AS total FROM spotify_playlists"
-    ).fetchone()["total"]
-
-    users = conn.execute(
-        "SELECT COUNT(*) AS total FROM spotify_users"
-    ).fetchone()["total"]
-
-    conn.close()
-
-    return {
-        "sqlite_db_path_env": os.getenv("SQLITE_DB_PATH"),
-        "active_db_path": str(DB_PATH),
-        "db_exists": DB_PATH.exists(),
-        "tracks": tracks,
-        "playlists": playlists,
-        "users": users,
-    }
-
 
 fastapi_app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 fastapi_app.include_router(profile.router, tags=["Profile"])
