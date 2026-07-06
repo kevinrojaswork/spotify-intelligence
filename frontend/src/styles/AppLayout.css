@@ -854,4 +854,4 @@ html {
 }
 
 
-/* Stability test: frontend-only deploy */
+/* Stability test with persistent SQLite volume */
