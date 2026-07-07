@@ -901,3 +901,23 @@ html {
     white-space: nowrap;
   }
 }
+
+.cached-data-card-compact {
+  padding: 1.15rem 1.25rem;
+}
+
+.cached-data-card-compact h2 {
+  margin: 0.25rem 0 0;
+  font-size: 1.2rem;
+}
+
+@media (max-width: 700px) {
+  .cached-data-card-compact {
+    gap: 0.85rem;
+    padding: 1rem;
+  }
+
+  .cached-data-card-compact .cached-data-meta {
+    padding: 0.8rem;
+  }
+}

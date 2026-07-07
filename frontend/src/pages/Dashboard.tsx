@@ -714,14 +714,10 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       </section>
 
 {syncStatus !== "syncing" && (
-  <section className="discovery-card cached-data-card">
+  <section className="discovery-card cached-data-card cached-data-card-compact">
     <div>
       <p className="section-label">Datos guardados</p>
-      <h2>Estás viendo tu análisis guardado.</h2>
-      <p>
-        Solo necesitas presionar <strong>Actualizar análisis</strong> cuando
-        hayas cambiado tus playlists en Spotify.
-      </p>
+      <h2>Análisis listo para consultar</h2>
     </div>
 
     <div className="cached-data-meta">
