@@ -883,36 +883,21 @@ html {
 
 
 @media (max-width: 700px) {
-  .topbar-actions {
-    width: 100%;
-    justify-content: center;
+  .dashboard-section-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding: 0.75rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .dashboard-actions-block {
-    width: 100%;
-    align-items: stretch;
+  .dashboard-section-nav::-webkit-scrollbar {
+    display: none;
   }
 
-  .hero-actions {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .hero-actions .connect-button,
-  .hero-actions .secondary-button {
-    width: 100%;
-    text-align: center;
-  }
-
-  .dashboard-actions-hint {
-    max-width: none;
-    padding: 0 0.25rem;
-    font-size: 0.78rem;
-  }
-
-  .connected-account {
-    max-width: 100%;
-    justify-content: center;
+  .dashboard-section-nav a {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 }
