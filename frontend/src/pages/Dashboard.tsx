@@ -265,7 +265,7 @@ const loadSyncStatus = async (spotifyUserId: string) => {
     localStorage.getItem("analysis_update_started") === "true";
 
   if (!spotifyUserId) {
-    setError("No hay una cuenta de Spotify conectada.");
+    setError(null);
     setIsLoading(false);
     return;
   }
@@ -551,6 +551,11 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
   );
 };
 
+  const hasConnectedSpotifyUser = Boolean(getSpotifyUserId());
+
+  if (!hasConnectedSpotifyUser) {
+    return null;
+  }
 
 
   if (isLoading) {
