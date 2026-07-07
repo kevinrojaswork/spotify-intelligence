@@ -170,31 +170,40 @@ function Topbar() {
         )}
       </div>
 
-      <div className="topbar-actions">
-        <button
-          type="button"
-          className="connect-button"
-          onClick={handleSpotifyAction}
-          disabled={isWorking}
-        >
-          {isWorking
-            ? isConnected
-              ? "Actualizando..."
-              : "Abriendo Spotify..."
-            : isConnected
-            ? "Actualizar análisis"
-            : "Conectar Spotify"}
-        </button>
-
-        {isConnected && (
+      <div className="dashboard-actions-block">
+        <div className="topbar-actions">
           <button
             type="button"
-            className="secondary-button"
-            onClick={changeAccount}
+            className="connect-button"
+            onClick={handleSpotifyAction}
             disabled={isWorking}
           >
-            Cambiar cuenta
+            {isWorking
+              ? isConnected
+                ? "Sincronizando Spotify..."
+                : "Abriendo Spotify..."
+              : isConnected
+              ? "Actualizar desde Spotify"
+              : "Conectar Spotify"}
           </button>
+
+          {isConnected && (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={changeAccount}
+              disabled={isWorking}
+            >
+              Cambiar cuenta
+            </button>
+          )}
+        </div>
+
+        {isConnected && (
+          <p className="dashboard-actions-hint">
+            Tus datos guardados se cargan automáticamente. Usa este botón solo
+            cuando hayas cambiado canciones o playlists en Spotify.
+          </p>
         )}
       </div>
     </header>

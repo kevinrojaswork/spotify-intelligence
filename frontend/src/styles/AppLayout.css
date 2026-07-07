@@ -854,4 +854,19 @@ html {
 }
 
 
-/* Final frontend-only deploy test */
+.dashboard-actions-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.dashboard-actions-hint {
+  max-width: 520px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+}
