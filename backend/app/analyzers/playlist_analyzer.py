@@ -1,44 +1,59 @@
-from collections import Counter
-
-
 class PlaylistAnalyzer:
     def __init__(self, tracks):
         self.tracks = tracks
 
     def analyze(self):
-        playlist_counter = Counter()
+        playlists = {}
 
         for track in self.tracks:
-            playlist_counter[track["playlist"]] += 1
+            playlist_id = track.get("spotify_playlist_id")
+            playlist_name = (
+                track.get("playlist")
+                or "Sin nombre"
+            ).strip()
+
+            # Usamos el ID como clave principal.
+            # Para datos antiguos sin ID, usamos el nombre como respaldo.
+            playlist_key = (
+                playlist_id
+                if playlist_id
+                else f"name:{playlist_name}"
+            )
+
+            if playlist_key not in playlists:
+                playlists[playlist_key] = {
+                    "spotify_playlist_id": playlist_id,
+                    "name": playlist_name,
+                    "count": 0,
+                }
+
+            playlists[playlist_key]["count"] += 1
+
+        playlist_items = list(playlists.values())
 
         largest_playlist = None
         smallest_playlist = None
         top_playlists = []
 
-        if playlist_counter:
-            largest_name, largest_count = playlist_counter.most_common(1)[0]
-            smallest_name, smallest_count = min(
-                playlist_counter.items(),
-                key=lambda item: item[1]
+        if playlist_items:
+            largest_playlist = max(
+                playlist_items,
+                key=lambda playlist: playlist["count"],
             )
 
-            largest_playlist = {
-                "name": largest_name,
-                "count": largest_count,
-            }
+            smallest_playlist = min(
+                playlist_items,
+                key=lambda playlist: playlist["count"],
+            )
 
-            smallest_playlist = {
-                "name": smallest_name,
-                "count": smallest_count,
-            }
-
-            top_playlists = [
-                {"name": name, "count": count}
-                for name, count in playlist_counter.most_common(10)
-            ]
+            top_playlists = sorted(
+                playlist_items,
+                key=lambda playlist: playlist["count"],
+                reverse=True,
+            )[:10]
 
         return {
-            "total_playlists": len(playlist_counter),
+            "total_playlists": len(playlist_items),
             "largest_playlist": largest_playlist,
             "smallest_playlist": smallest_playlist,
             "top_playlists": top_playlists,
