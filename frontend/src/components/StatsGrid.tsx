@@ -29,7 +29,7 @@ function StatsGrid({
     },
     {
       icon: "📁",
-      label: "Playlists analizadas",
+      label: "Playlists totales",
       value: totalPlaylists,
     },
   ];

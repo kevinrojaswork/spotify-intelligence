@@ -170,6 +170,16 @@ class MusicAnalysisEngine:
         playlist_data = PlaylistAnalyzer(self.tracks).analyze()
         duplicate_data = DuplicateAnalyzer(self.tracks).analyze()
 
+        all_user_playlists = get_user_playlists(spotify_user_id)
+
+        total_library_playlists = (
+            1
+            if spotify_playlist_id
+            else len(all_user_playlists)
+        )
+
+
+
         dna_data = DNAAnalyzer(
             self.tracks,
             artist_data,
@@ -211,7 +221,7 @@ class MusicAnalysisEngine:
             "spotify_user_id": spotify_user_id,
             "spotify_playlist_id": spotify_playlist_id,
             "total_tracks": len(self.tracks),
-            "total_playlists": playlist_data["total_playlists"],
+            "total_playlists": total_library_playlists,
             "total_artists": len(unique_artists),
             "total_albums": len(unique_albums),
             "top_artists": artist_data["top_artists"],
