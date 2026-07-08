@@ -952,3 +952,21 @@ html {
   }
 }
 
+
+.empty-playlist-card {
+  text-align: center;
+  border-color: rgba(30, 215, 96, 0.24);
+  background: linear-gradient(
+    135deg,
+    rgba(30, 215, 96, 0.09),
+    rgba(255, 255, 255, 0.045)
+  );
+}
+
+.empty-playlist-card h2 {
+  margin: 0.4rem 0 0.75rem;
+}
+
+.empty-playlist-card strong {
+  color: #1ed760;
+}

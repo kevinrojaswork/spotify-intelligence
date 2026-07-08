@@ -174,10 +174,7 @@ function Dashboard() {
   }
 
   setStats(data);
-
-  if (data.total_tracks > 0) {
-    setError(null);
-  }
+  setError(null);
 
   return data;
 };
@@ -325,14 +322,6 @@ const loadSyncStatus = async (spotifyUserId: string) => {
         validPlaylistId
       );
 
-      if (playlistDashboardData.total_tracks === 0) {
-        localStorage.removeItem("selected_playlist_id");
-        setSelectedPlaylistId("");
-
-        dashboardData = await loadDashboard(spotifyUserId, "");
-        return dashboardData;
-      }
-
       return playlistDashboardData;
     } catch (playlistDashboardError) {
       console.error(
@@ -475,6 +464,30 @@ const loadSyncStatus = async (spotifyUserId: string) => {
     }
   };
 
+  const handleReturnToLibrary = async () => {
+    const spotifyUserId = getSpotifyUserId();
+
+    if (!spotifyUserId) {
+      setError("No hay una cuenta de Spotify conectada.");
+      return;
+    }
+
+    localStorage.removeItem("selected_playlist_id");
+    setSelectedPlaylistId("");
+
+    try {
+      setIsChangingScope(true);
+      await loadDashboard(spotifyUserId, "");
+      setIsPlaylistSelectorOpen(false);
+    } catch (error) {
+      console.error("Error volviendo a biblioteca completa:", error);
+      setError("No se pudo volver al análisis general.");
+    } finally {
+      setIsChangingScope(false);
+    }
+  };
+
+
   const selectedPlaylist = playlists.find(
     (playlist) => playlist.spotify_playlist_id === selectedPlaylistId
   );
@@ -487,6 +500,9 @@ const loadSyncStatus = async (spotifyUserId: string) => {
   playlists.length > 0 ? playlists.length : stats?.total_playlists ?? 0;
 
   const isPlaylistMode = Boolean(selectedPlaylistId);
+
+  const isEmptyPlaylist =
+  isPlaylistMode && stats !== null && stats.total_tracks === 0;
 
   const playlistDiscovery = stats?.dominant_artist
     ? `${stats.dominant_artist.name} domina esta playlist: aparece ${stats.dominant_artist.count} veces, equivalente al ${stats.dominant_artist_percentage}% de las canciones analizadas.`
@@ -609,7 +625,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     );
   }
 
-  if (!stats || stats.total_tracks === 0) {
+  if (!stats || (!isPlaylistMode && stats.total_tracks === 0)) {
     return (
       <div className="dashboard">
         <section className="discovery-card">
@@ -623,6 +639,93 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       </div>
     );
   }
+
+  if (isEmptyPlaylist) {
+    return (
+      <div className="dashboard">
+        <section className="analysis-scope-card">
+          <div>
+            <p className="section-label">Modo playlist</p>
+
+            <h2>Analizando: {currentScopeLabel}</h2>
+
+            <p>
+              Esta playlist está guardada en Spotify, pero todavía no contiene
+              canciones.
+            </p>
+
+            <span className="playlist-count-label">
+              0 canciones en esta playlist
+            </span>
+          </div>
+
+          <div className="scope-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() =>
+                setIsPlaylistSelectorOpen((isOpen) => !isOpen)
+              }
+            >
+              {isPlaylistSelectorOpen
+                ? "Ocultar selector"
+                : "Cambiar playlist"}
+            </button>
+
+            <button
+              type="button"
+              className="scope-reset-button"
+              onClick={handleReturnToLibrary}
+            >
+              Ver toda mi biblioteca
+            </button>
+
+            {isPlaylistSelectorOpen && (
+              <div className="playlist-selector-wrapper">
+                <label htmlFor="empty-playlist-selector">
+                  Seleccionar análisis
+                </label>
+
+                <select
+                  id="empty-playlist-selector"
+                  value={selectedPlaylistId}
+                  onChange={handlePlaylistChange}
+                  disabled={isChangingScope}
+                >
+                  <option value="">Toda mi biblioteca</option>
+
+                  {playlists.map((playlist) => (
+                    <option
+                      key={playlist.spotify_playlist_id}
+                      value={playlist.spotify_playlist_id}
+                    >
+                      {playlist.name} — {playlist.total_tracks} canciones
+                    </option>
+                  ))}
+                </select>
+
+                {isChangingScope && <span>Cambiando análisis...</span>}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="discovery-card empty-playlist-card">
+          <p className="section-label">Playlist vacía</p>
+
+          <h2>{currentScopeLabel} todavía no tiene canciones.</h2>
+
+          <p>
+            Esta playlist seguirá disponible en tu biblioteca. Agrega canciones
+            desde Spotify y luego presiona{" "}
+            <strong>Actualizar desde Spotify</strong> para analizarla.
+          </p>
+        </section>
+      </div>
+    );
+  }
+
+
 
   return (
     <div className="dashboard">
@@ -658,28 +761,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
             <button
               type="button"
               className="scope-reset-button"
-              onClick={async () => {
-                const spotifyUserId = getSpotifyUserId();
-
-                if (!spotifyUserId) {
-                  setError("No hay una cuenta de Spotify conectada.");
-                  return;
-                }
-
-                localStorage.removeItem("selected_playlist_id");
-                setSelectedPlaylistId("");
-
-                try {
-                  setIsChangingScope(true);
-                  await loadDashboard(spotifyUserId, "");
-                  setIsPlaylistSelectorOpen(false);
-                } catch (error) {
-                  console.error("Error volviendo a biblioteca completa:", error);
-                  setError("No se pudo volver al análisis general.");
-                } finally {
-                  setIsChangingScope(false);
-                }
-              }}
+              onClick={handleReturnToLibrary}
             >
               Ver toda mi biblioteca
             </button>
