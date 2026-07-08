@@ -641,7 +641,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           </p>
 
           <span className="playlist-count-label">
-            {availablePlaylistCount} playlists disponibles
+            {availablePlaylistCount} playlists encontradas en Spotify
           </span>
         </div>
 
