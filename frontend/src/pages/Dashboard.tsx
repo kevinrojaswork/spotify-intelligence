@@ -492,6 +492,15 @@ const loadSyncStatus = async (spotifyUserId: string) => {
     (playlist) => playlist.spotify_playlist_id === selectedPlaylistId
   );
 
+
+  const playlistsWithSongs = playlists.filter(
+    (playlist) => playlist.total_tracks > 0
+  );
+
+  const emptyPlaylists = playlists.filter(
+    (playlist) => playlist.total_tracks === 0
+  );
+
   const currentScopeLabel = selectedPlaylist
     ? selectedPlaylist.name
     : "Toda mi biblioteca";
@@ -694,14 +703,35 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
                 >
                   <option value="">Toda mi biblioteca</option>
 
-                  {playlists.map((playlist) => (
-                    <option
-                      key={playlist.spotify_playlist_id}
-                      value={playlist.spotify_playlist_id}
-                    >
-                      {playlist.name} — {playlist.total_tracks} canciones
-                    </option>
-                  ))}
+                  {playlistsWithSongs.length > 0 && (
+  <optgroup
+    label={`Con canciones (${playlistsWithSongs.length})`}
+  >
+    {playlistsWithSongs.map((playlist) => (
+      <option
+        key={playlist.spotify_playlist_id}
+        value={playlist.spotify_playlist_id}
+      >
+        {playlist.name} — {playlist.total_tracks} canciones
+      </option>
+    ))}
+  </optgroup>
+)}
+
+{emptyPlaylists.length > 0 && (
+  <optgroup
+    label={`Vacías (${emptyPlaylists.length})`}
+  >
+    {emptyPlaylists.map((playlist) => (
+      <option
+        key={playlist.spotify_playlist_id}
+        value={playlist.spotify_playlist_id}
+      >
+        {playlist.name} — 0 canciones
+      </option>
+    ))}
+  </optgroup>
+)}
                 </select>
 
                 {isChangingScope && <span>Cambiando análisis...</span>}
@@ -779,14 +809,35 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
               >
                 <option value="">Toda mi biblioteca</option>
 
-                {playlists.map((playlist) => (
-                  <option
-                    key={playlist.spotify_playlist_id}
-                    value={playlist.spotify_playlist_id}
-                  >
-                    {playlist.name} — {playlist.total_tracks} canciones
-                  </option>
-                ))}
+                {playlistsWithSongs.length > 0 && (
+  <optgroup
+    label={`Con canciones (${playlistsWithSongs.length})`}
+  >
+    {playlistsWithSongs.map((playlist) => (
+      <option
+        key={playlist.spotify_playlist_id}
+        value={playlist.spotify_playlist_id}
+      >
+        {playlist.name} — {playlist.total_tracks} canciones
+      </option>
+    ))}
+  </optgroup>
+)}
+
+{emptyPlaylists.length > 0 && (
+  <optgroup
+    label={`Vacías (${emptyPlaylists.length})`}
+  >
+    {emptyPlaylists.map((playlist) => (
+      <option
+        key={playlist.spotify_playlist_id}
+        value={playlist.spotify_playlist_id}
+      >
+        {playlist.name} — 0 canciones
+      </option>
+    ))}
+  </optgroup>
+)}
               </select>
 
               {isChangingScope && <span>Cambiando análisis...</span>}
