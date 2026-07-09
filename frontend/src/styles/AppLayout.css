@@ -970,3 +970,33 @@ html {
 .empty-playlist-card strong {
   color: #1ed760;
 }
+
+
+.playlist-search-input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  outline: none;
+}
+
+.playlist-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.playlist-search-input:focus {
+  border-color: rgba(30, 215, 96, 0.65);
+  box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.12);
+}
+
+.playlist-search-empty {
+  margin: 0.45rem 0 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+}

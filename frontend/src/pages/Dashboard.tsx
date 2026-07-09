@@ -106,6 +106,7 @@ function Dashboard() {
   const [isChangingScope, setIsChangingScope] = useState(false);
   const [showUpdateSuccess, setShowUpdateSuccess] = useState(false);
   const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
+  const [playlistSearch, setPlaylistSearch] = useState("");
   const [expandedTopLists, setExpandedTopLists] = useState<
   Record<TopListKey, boolean>
 >({
@@ -438,6 +439,9 @@ const loadSyncStatus = async (spotifyUserId: string) => {
   ) => {
     const newPlaylistId = event.target.value;
     const spotifyUserId = getSpotifyUserId();
+    
+    setPlaylistSearch("");
+
 
     if (!spotifyUserId) {
       setError("No hay una cuenta de Spotify conectada.");
@@ -474,6 +478,8 @@ const loadSyncStatus = async (spotifyUserId: string) => {
 
     localStorage.removeItem("selected_playlist_id");
     setSelectedPlaylistId("");
+    setPlaylistSearch("");
+
 
     try {
       setIsChangingScope(true);
@@ -500,6 +506,22 @@ const loadSyncStatus = async (spotifyUserId: string) => {
   const emptyPlaylists = playlists.filter(
     (playlist) => playlist.total_tracks === 0
   );
+
+  const normalizedPlaylistSearch = playlistSearch
+  .trim()
+  .toLowerCase();
+
+  const filteredPlaylistsWithSongs = playlistsWithSongs.filter((playlist) =>
+    playlist.name.toLowerCase().includes(normalizedPlaylistSearch)
+  );
+
+  const filteredEmptyPlaylists = emptyPlaylists.filter((playlist) =>
+    playlist.name.toLowerCase().includes(normalizedPlaylistSearch)
+  );
+
+  const hasPlaylistSearchResults =
+    filteredPlaylistsWithSongs.length > 0 ||
+    filteredEmptyPlaylists.length > 0;
 
   const currentScopeLabel = selectedPlaylist
     ? selectedPlaylist.name
@@ -690,55 +712,71 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
             </button>
 
             {isPlaylistSelectorOpen && (
-              <div className="playlist-selector-wrapper">
-                <label htmlFor="empty-playlist-selector">
-                  Seleccionar análisis
-                </label>
+              
+<div className="playlist-selector-wrapper">
+  <label htmlFor="empty-playlist-selector">
+    Seleccionar análisis
+  </label>
 
-                <select
-                  id="empty-playlist-selector"
-                  value={selectedPlaylistId}
-                  onChange={handlePlaylistChange}
-                  disabled={isChangingScope}
-                >
-                  <option value="">Toda mi biblioteca</option>
+  <input
+    type="search"
+    className="playlist-search-input"
+    placeholder="Buscar playlist por nombre..."
+    value={playlistSearch}
+    onChange={(event) => setPlaylistSearch(event.target.value)}
+    autoComplete="off"
+  />
 
-                  {playlistsWithSongs.length > 0 && (
-  <optgroup
-    label={`Con canciones (${playlistsWithSongs.length})`}
+  <select
+    id="empty-playlist-selector"
+    value={selectedPlaylistId}
+    onChange={handlePlaylistChange}
+    disabled={isChangingScope}
   >
-    {playlistsWithSongs.map((playlist) => (
-      <option
-        key={playlist.spotify_playlist_id}
-        value={playlist.spotify_playlist_id}
-      >
-        {playlist.name} — {playlist.total_tracks} canciones
-      </option>
-    ))}
-  </optgroup>
-)}
+    <option value="">Toda mi biblioteca</option>
 
-{emptyPlaylists.length > 0 && (
-  <optgroup
-    label={`Vacías (${emptyPlaylists.length})`}
-  >
-    {emptyPlaylists.map((playlist) => (
-      <option
-        key={playlist.spotify_playlist_id}
-        value={playlist.spotify_playlist_id}
+    {filteredPlaylistsWithSongs.length > 0 && (
+      <optgroup
+        label={`Con canciones (${filteredPlaylistsWithSongs.length})`}
       >
-        {playlist.name} — 0 canciones
-      </option>
-    ))}
-  </optgroup>
-)}
-                </select>
+        {filteredPlaylistsWithSongs.map((playlist) => (
+          <option
+            key={playlist.spotify_playlist_id}
+            value={playlist.spotify_playlist_id}
+          >
+            {playlist.name} — {playlist.total_tracks} canciones
+          </option>
+        ))}
+      </optgroup>
+    )}
 
-                {isChangingScope && <span>Cambiando análisis...</span>}
-              </div>
-            )}
+    {filteredEmptyPlaylists.length > 0 && (
+      <optgroup
+        label={`Vacías (${filteredEmptyPlaylists.length})`}
+      >
+        {filteredEmptyPlaylists.map((playlist) => (
+          <option
+            key={playlist.spotify_playlist_id}
+            value={playlist.spotify_playlist_id}
+          >
+            {playlist.name} — 0 canciones
+          </option>
+        ))}
+      </optgroup>
+    )}
+  </select>
+
+  {playlistSearch && !hasPlaylistSearchResults && (
+    <p className="playlist-search-empty">
+      No encontramos playlists con ese nombre.
+    </p>
+  )}
+
+  {isChangingScope && <span>Cambiando análisis...</span>}
           </div>
-        </section>
+        )}
+      </div>
+    </section>
 
         <section className="discovery-card empty-playlist-card">
           <p className="section-label">Playlist vacía</p>
@@ -801,44 +839,58 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
             <div className="playlist-selector-wrapper">
               <label htmlFor="playlist-selector">Seleccionar análisis</label>
 
+              <input
+                type="search"
+                className="playlist-search-input"
+                placeholder="Buscar playlist por nombre..."
+                value={playlistSearch}
+                onChange={(event) => setPlaylistSearch(event.target.value)}
+              />
+
               <select
-                id="playlist-selector"
-                value={selectedPlaylistId}
-                onChange={handlePlaylistChange}
-                disabled={isChangingScope}
-              >
-                <option value="">Toda mi biblioteca</option>
+  id="playlist-selector"
+  value={selectedPlaylistId}
+  onChange={handlePlaylistChange}
+  disabled={isChangingScope}
+>
+  <option value="">Toda mi biblioteca</option>
 
-                {playlistsWithSongs.length > 0 && (
-  <optgroup
-    label={`Con canciones (${playlistsWithSongs.length})`}
-  >
-    {playlistsWithSongs.map((playlist) => (
-      <option
-        key={playlist.spotify_playlist_id}
-        value={playlist.spotify_playlist_id}
-      >
-        {playlist.name} — {playlist.total_tracks} canciones
-      </option>
-    ))}
-  </optgroup>
-)}
+  {filteredPlaylistsWithSongs.length > 0 && (
+    <optgroup
+      label={`Con canciones (${filteredPlaylistsWithSongs.length})`}
+    >
+      {filteredPlaylistsWithSongs.map((playlist) => (
+        <option
+          key={playlist.spotify_playlist_id}
+          value={playlist.spotify_playlist_id}
+        >
+          {playlist.name} — {playlist.total_tracks} canciones
+        </option>
+      ))}
+    </optgroup>
+  )}
 
-{emptyPlaylists.length > 0 && (
-  <optgroup
-    label={`Vacías (${emptyPlaylists.length})`}
-  >
-    {emptyPlaylists.map((playlist) => (
-      <option
-        key={playlist.spotify_playlist_id}
-        value={playlist.spotify_playlist_id}
-      >
-        {playlist.name} — 0 canciones
-      </option>
-    ))}
-  </optgroup>
+  {filteredEmptyPlaylists.length > 0 && (
+    <optgroup
+      label={`Vacías (${filteredEmptyPlaylists.length})`}
+    >
+      {filteredEmptyPlaylists.map((playlist) => (
+        <option
+          key={playlist.spotify_playlist_id}
+          value={playlist.spotify_playlist_id}
+        >
+          {playlist.name} — 0 canciones
+        </option>
+      ))}
+    </optgroup>
+  )}
+</select>
+
+{playlistSearch && !hasPlaylistSearchResults && (
+  <p className="playlist-search-empty">
+    No encontramos playlists con ese nombre.
+  </p>
 )}
-              </select>
 
               {isChangingScope && <span>Cambiando análisis...</span>}
             </div>
