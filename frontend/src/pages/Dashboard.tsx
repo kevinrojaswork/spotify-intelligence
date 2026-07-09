@@ -507,16 +507,38 @@ const loadSyncStatus = async (spotifyUserId: string) => {
     (playlist) => playlist.total_tracks === 0
   );
 
-  const normalizedPlaylistSearch = playlistSearch
-  .trim()
-  .toLowerCase();
+  const normalizePlaylistText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
 
-  const filteredPlaylistsWithSongs = playlistsWithSongs.filter((playlist) =>
-    playlist.name.toLowerCase().includes(normalizedPlaylistSearch)
+const normalizedPlaylistSearch =
+  normalizePlaylistText(playlistSearch);
+
+  const filteredPlaylistsWithSongs = playlistsWithSongs
+  .filter((playlist) =>
+    normalizePlaylistText(playlist.name).includes(
+      normalizedPlaylistSearch
+    )
+  )
+  .sort((firstPlaylist, secondPlaylist) =>
+    firstPlaylist.name.localeCompare(secondPlaylist.name, "es", {
+      sensitivity: "base",
+    })
   );
 
-  const filteredEmptyPlaylists = emptyPlaylists.filter((playlist) =>
-    playlist.name.toLowerCase().includes(normalizedPlaylistSearch)
+const filteredEmptyPlaylists = emptyPlaylists
+  .filter((playlist) =>
+    normalizePlaylistText(playlist.name).includes(
+      normalizedPlaylistSearch
+    )
+  )
+  .sort((firstPlaylist, secondPlaylist) =>
+    firstPlaylist.name.localeCompare(secondPlaylist.name, "es", {
+      sensitivity: "base",
+    })
   );
 
   const hasPlaylistSearchResults =
