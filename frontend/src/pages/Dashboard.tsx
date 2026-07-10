@@ -997,7 +997,20 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           <span className="playlist-count-label">
             {availablePlaylistCount} playlists encontradas en Spotify
           </span>
-        </div>
+
+            {!isPlaylistMode && playlists.length > 0 && (
+              <div className="playlist-library-breakdown">
+                <span>
+                  <strong>{playlistsWithSongs.length}</strong> con canciones
+                </span>
+
+                <span>
+                  <strong>{emptyPlaylists.length}</strong> vacías
+                </span>
+              </div>
+            )}
+              
+  </div>
 
         <div className="scope-actions">
           <button
