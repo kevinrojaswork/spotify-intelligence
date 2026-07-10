@@ -524,6 +524,79 @@ const loadSyncStatus = async (spotifyUserId: string) => {
 const normalizedPlaylistSearch =
   normalizePlaylistText(playlistSearch);
 
+const renderHighlightedPlaylistName = (playlistName: string) => {
+  if (!normalizedPlaylistSearch) {
+    return playlistName;
+  }
+
+  let normalizedName = "";
+  const originalIndexMap: number[] = [];
+
+  for (let index = 0; index < playlistName.length; ) {
+    const codePoint = playlistName.codePointAt(index);
+
+    if (codePoint === undefined) {
+      break;
+    }
+
+    const character = String.fromCodePoint(codePoint);
+
+    const normalizedCharacter = character
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+    for (const normalizedPart of normalizedCharacter) {
+      normalizedName += normalizedPart;
+      originalIndexMap.push(index);
+    }
+
+    index += character.length;
+  }
+
+  const matchStart = normalizedName.indexOf(normalizedPlaylistSearch);
+
+  if (matchStart === -1) {
+    return playlistName;
+  }
+
+  const normalizedMatchEnd =
+    matchStart + normalizedPlaylistSearch.length - 1;
+
+  const originalStart = originalIndexMap[matchStart];
+  const finalCharacterStart = originalIndexMap[normalizedMatchEnd];
+
+  if (
+    originalStart === undefined ||
+    finalCharacterStart === undefined
+  ) {
+    return playlistName;
+  }
+
+  const finalCodePoint = playlistName.codePointAt(finalCharacterStart);
+
+  if (finalCodePoint === undefined) {
+    return playlistName;
+  }
+
+  const originalEnd =
+    finalCharacterStart + String.fromCodePoint(finalCodePoint).length;
+
+  return (
+    <>
+      {playlistName.slice(0, originalStart)}
+
+      <mark className="playlist-search-highlight">
+        {playlistName.slice(originalStart, originalEnd)}
+      </mark>
+
+      {playlistName.slice(originalEnd)}
+    </>
+  );
+};
+
+
+
   const filteredPlaylistsWithSongs = playlistsWithSongs
   .filter((playlist) =>
     normalizePlaylistText(playlist.name).includes(
@@ -598,8 +671,8 @@ const filteredEmptyPlaylists = emptyPlaylists
             disabled={isChangingScope}
           >
             <span className="playlist-search-result-name">
-              {playlist.name}
-            </span>
+  {renderHighlightedPlaylistName(playlist.name)}
+</span>
 
             <span className="playlist-search-result-count">
               {playlist.total_tracks === 0

@@ -1128,3 +1128,12 @@ html {
   color: #ffffff;
   outline: none;
 }
+
+
+.playlist-search-highlight {
+  padding: 0.05rem 0.15rem;
+  border-radius: 5px;
+  background: rgba(30, 215, 96, 0.25);
+  color: #ffffff;
+  font-weight: 950;
+}
