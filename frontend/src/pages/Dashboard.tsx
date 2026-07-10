@@ -818,14 +818,28 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     Seleccionar análisis
   </label>
 
-  <input
-    type="search"
-    className="playlist-search-input"
-    placeholder="Buscar playlist por nombre..."
-    value={playlistSearch}
-    onChange={(event) => setPlaylistSearch(event.target.value)}
-    autoComplete="off"
-  />
+    <div className="playlist-search-field">
+    <input
+      type="search"
+      className="playlist-search-input"
+      placeholder="Buscar playlist por nombre..."
+      value={playlistSearch}
+      onChange={(event) => setPlaylistSearch(event.target.value)}
+      autoComplete="off"
+    />
+
+    {playlistSearch && (
+      <button
+        type="button"
+        className="playlist-search-clear-button"
+        onClick={() => setPlaylistSearch("")}
+        aria-label="Limpiar búsqueda"
+        title="Limpiar búsqueda"
+      >
+        ×
+      </button>
+    )}
+  </div>
 
   {renderPlaylistSearchResults()}
 
@@ -935,14 +949,28 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
             <div className="playlist-selector-wrapper">
               <label htmlFor="playlist-selector">Seleccionar análisis</label>
 
-              <input
-                type="search"
-                className="playlist-search-input"
-                placeholder="Buscar playlist por nombre..."
-                value={playlistSearch}
-                onChange={(event) => setPlaylistSearch(event.target.value)}
-                autoComplete="off"
-              />
+              <div className="playlist-search-field">
+                <input
+                  type="search"
+                  className="playlist-search-input"
+                  placeholder="Buscar playlist por nombre..."
+                  value={playlistSearch}
+                  onChange={(event) => setPlaylistSearch(event.target.value)}
+                  autoComplete="off"
+                />
+
+                {playlistSearch && (
+                  <button
+                    type="button"
+                    className="playlist-search-clear-button"
+                    onClick={() => setPlaylistSearch("")}
+                    aria-label="Limpiar búsqueda"
+                    title="Limpiar búsqueda"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
 
               {renderPlaylistSearchResults()}
 

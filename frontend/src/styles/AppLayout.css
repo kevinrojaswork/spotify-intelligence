@@ -1086,3 +1086,45 @@ html {
     width: 100%;
   }
 }
+
+
+.playlist-search-field {
+  position: relative;
+  width: 100%;
+}
+
+.playlist-search-field .playlist-search-input {
+  padding-right: 3rem;
+}
+
+.playlist-search-clear-button {
+  position: absolute;
+  top: 50%;
+  right: 0.7rem;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.playlist-search-clear-button:hover,
+.playlist-search-clear-button:focus-visible {
+  transform: translateY(-50%) scale(1.06);
+  background: rgba(30, 215, 96, 0.2);
+  color: #ffffff;
+  outline: none;
+}
