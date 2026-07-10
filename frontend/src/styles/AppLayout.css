@@ -1000,3 +1000,89 @@ html {
   font-weight: 700;
   text-align: center;
 }
+
+
+/* Resultados visibles del buscador de playlists */
+.playlist-search-results {
+  width: 100%;
+  display: grid;
+  gap: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(8, 12, 18, 0.78);
+  scrollbar-width: thin;
+}
+
+.playlist-search-result-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #ffffff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.playlist-search-result-button:hover,
+.playlist-search-result-button:focus-visible {
+  border-color: rgba(30, 215, 96, 0.55);
+  background: rgba(30, 215, 96, 0.12);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.playlist-search-result-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.playlist-search-result-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-search-result-count {
+  flex: 0 0 auto;
+  color: #1ed760;
+  font-size: 0.8rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.playlist-search-more {
+  margin: 0;
+  padding: 0.35rem 0.4rem 0.1rem;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .playlist-search-result-button {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .playlist-search-result-name {
+    width: 100%;
+  }
+}

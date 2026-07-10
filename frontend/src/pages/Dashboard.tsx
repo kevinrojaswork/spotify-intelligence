@@ -90,6 +90,7 @@ type TopListKey =
   | "top-albums";
 
 const TOP_LIST_PREVIEW_LIMIT = 5;
+const PLAYLIST_SEARCH_RESULT_LIMIT = 10;
 
 
 
@@ -434,14 +435,10 @@ const loadSyncStatus = async (spotifyUserId: string) => {
 
 
 
-  const handlePlaylistChange = async (
-    event: ChangeEvent<HTMLSelectElement>
-  ) => {
-    const newPlaylistId = event.target.value;
+  const selectPlaylistForAnalysis = async (newPlaylistId: string) => {
     const spotifyUserId = getSpotifyUserId();
-    
-    setPlaylistSearch("");
 
+    setPlaylistSearch("");
 
     if (!spotifyUserId) {
       setError("No hay una cuenta de Spotify conectada.");
@@ -466,6 +463,16 @@ const loadSyncStatus = async (spotifyUserId: string) => {
     } finally {
       setIsChangingScope(false);
     }
+  };
+
+  const handlePlaylistChange = async (
+    event: ChangeEvent<HTMLSelectElement>
+  ) => {
+    await selectPlaylistForAnalysis(event.target.value);
+  };
+
+  const handlePlaylistSearchResultClick = async (playlistId: string) => {
+    await selectPlaylistForAnalysis(playlistId);
   };
 
   const handleReturnToLibrary = async () => {
@@ -544,6 +551,77 @@ const filteredEmptyPlaylists = emptyPlaylists
   const hasPlaylistSearchResults =
     filteredPlaylistsWithSongs.length > 0 ||
     filteredEmptyPlaylists.length > 0;
+
+  const playlistSearchResults = [
+    ...filteredPlaylistsWithSongs,
+    ...filteredEmptyPlaylists,
+  ];
+
+  const visiblePlaylistSearchResults = playlistSearchResults.slice(
+    0,
+    PLAYLIST_SEARCH_RESULT_LIMIT
+  );
+
+  const remainingPlaylistSearchResults =
+    playlistSearchResults.length - visiblePlaylistSearchResults.length;
+
+  const renderPlaylistSearchResults = () => {
+    if (!normalizedPlaylistSearch) {
+      return null;
+    }
+
+    if (!hasPlaylistSearchResults) {
+      return (
+        <div className="playlist-search-results">
+          <p className="playlist-search-empty">
+            No encontramos playlists con ese nombre.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className="playlist-search-results"
+        aria-label="Resultados de búsqueda de playlists"
+      >
+        {visiblePlaylistSearchResults.map((playlist) => (
+          <button
+            key={playlist.spotify_playlist_id}
+            type="button"
+            className="playlist-search-result-button"
+            onClick={() =>
+              void handlePlaylistSearchResultClick(
+                playlist.spotify_playlist_id
+              )
+            }
+            disabled={isChangingScope}
+          >
+            <span className="playlist-search-result-name">
+              {playlist.name}
+            </span>
+
+            <span className="playlist-search-result-count">
+              {playlist.total_tracks === 0
+                ? "Playlist vacía"
+                : `${playlist.total_tracks} ${
+                    playlist.total_tracks === 1
+                      ? "canción"
+                      : "canciones"
+                  }`}
+            </span>
+          </button>
+        ))}
+
+        {remainingPlaylistSearchResults > 0 && (
+          <p className="playlist-search-more">
+            Hay {remainingPlaylistSearchResults} resultados más. Escribe un
+            nombre más específico para reducir la lista.
+          </p>
+        )}
+      </div>
+    );
+  };
 
   const currentScopeLabel = selectedPlaylist
     ? selectedPlaylist.name
@@ -749,6 +827,8 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     autoComplete="off"
   />
 
+  {renderPlaylistSearchResults()}
+
   <select
     id="empty-playlist-selector"
     value={selectedPlaylistId}
@@ -787,12 +867,6 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       </optgroup>
     )}
   </select>
-
-  {playlistSearch && !hasPlaylistSearchResults && (
-    <p className="playlist-search-empty">
-      No encontramos playlists con ese nombre.
-    </p>
-  )}
 
   {isChangingScope && <span>Cambiando análisis...</span>}
           </div>
@@ -867,7 +941,10 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
                 placeholder="Buscar playlist por nombre..."
                 value={playlistSearch}
                 onChange={(event) => setPlaylistSearch(event.target.value)}
+                autoComplete="off"
               />
+
+              {renderPlaylistSearchResults()}
 
               <select
   id="playlist-selector"
@@ -907,12 +984,6 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     </optgroup>
   )}
 </select>
-
-{playlistSearch && !hasPlaylistSearchResults && (
-  <p className="playlist-search-empty">
-    No encontramos playlists con ese nombre.
-  </p>
-)}
 
               {isChangingScope && <span>Cambiando análisis...</span>}
             </div>
