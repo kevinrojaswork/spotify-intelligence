@@ -105,6 +105,7 @@ function Dashboard() {
   const [syncError, setSyncError] = useState("");
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [needsReconnect, setNeedsReconnect] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [isLoading, setIsLoading] = useState(true);
   const [isChangingScope, setIsChangingScope] = useState(false);
   const [showUpdateSuccess, setShowUpdateSuccess] = useState(false);
@@ -434,6 +435,25 @@ const loadSyncStatus = async (spotifyUserId: string) => {
     if (intervalId) {
       window.clearInterval(intervalId);
     }
+  };
+}, []);
+
+
+useEffect(() => {
+  const handleOnline = () => {
+    setIsOnline(true);
+  };
+
+  const handleOffline = () => {
+    setIsOnline(false);
+  };
+
+  window.addEventListener("online", handleOnline);
+  window.addEventListener("offline", handleOffline);
+
+  return () => {
+    window.removeEventListener("online", handleOnline);
+    window.removeEventListener("offline", handleOffline);
   };
 }, []);
 
@@ -810,37 +830,44 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
   }
 
   if (error && (!stats || stats.total_tracks === 0)) {
-    return (
-      <div className="dashboard">
-        <section className="discovery-card">
-          <p className="section-label">Acción necesaria</p>
-<h2>No pudimos mostrar tu análisis guardado.</h2>
-<p>
-  Intenta recargar la página. Si el problema continúa, presiona{" "}
-  <strong>Actualizar análisis</strong> para sincronizar Spotify nuevamente.
-</p>
+  return (
+    <div className="dashboard">
+      <section className="discovery-card dashboard-error-card">
+        <p className="section-label">Acción necesaria</p>
 
+        <h2>
+          {isOnline
+            ? "No pudimos mostrar tu análisis guardado."
+            : "No tienes conexión a internet."}
+        </h2>
 
-<div className="dashboard-error-actions">
-  <button
-    type="button"
-    className="secondary-button"
-    onClick={() => window.location.reload()}
-  >
-    Reintentar carga
-  </button>
-</div>
+        <p>
+          {isOnline
+            ? "Intenta cargar nuevamente tus datos guardados. Solo necesitas actualizar desde Spotify si el problema continúa."
+            : "Comprueba tu conexión. Cuando vuelvas a tener internet, presiona Reintentar carga."}
+        </p>
 
-          {syncError && (
-  <details className="technical-error-details">
-    <summary>Ver detalles técnicos</summary>
-    <p>{syncError}</p>
-  </details>
-)}
-        </section>
-      </div>
-    );
-  }
+        <div className="dashboard-error-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => window.location.reload()}
+            disabled={!isOnline}
+          >
+            {isOnline ? "Reintentar carga" : "Esperando conexión..."}
+          </button>
+        </div>
+
+        {syncError && (
+          <details className="technical-error-details">
+            <summary>Ver detalles técnicos</summary>
+            <p>{syncError}</p>
+          </details>
+        )}
+      </section>
+    </div>
+  );
+}
 
   if (syncStatus === "syncing" && (!stats || stats.total_tracks === 0)) {
     return (
@@ -1192,6 +1219,20 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           )}
         </div>
       </section>
+
+
+      {!isOnline && (
+  <section className="discovery-card offline-warning-card">
+    <p className="section-label">Sin conexión</p>
+
+    <h2>Estás viendo los datos que ya estaban cargados.</h2>
+
+    <p>
+      Algunas funciones, como cambiar de playlist o actualizar desde Spotify,
+      estarán disponibles cuando regrese tu conexión.
+    </p>
+  </section>
+)}
 
 {syncStatus !== "syncing" && (
   <section className="discovery-card cached-data-card cached-data-card-compact">

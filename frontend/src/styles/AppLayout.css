@@ -1230,3 +1230,23 @@ html {
 .dashboard-error-actions .secondary-button {
   min-width: 180px;
 }
+
+.offline-warning-card {
+  text-align: center;
+  border-color: rgba(255, 193, 7, 0.28);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 193, 7, 0.11),
+    rgba(255, 255, 255, 0.045)
+  );
+}
+
+.offline-warning-card h2 {
+  margin: 0.4rem 0 0.65rem;
+}
+
+.dashboard-error-actions .secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
