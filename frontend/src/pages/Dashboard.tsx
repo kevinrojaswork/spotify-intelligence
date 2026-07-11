@@ -820,6 +820,17 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
   <strong>Actualizar análisis</strong> para sincronizar Spotify nuevamente.
 </p>
 
+
+<div className="dashboard-error-actions">
+  <button
+    type="button"
+    className="secondary-button"
+    onClick={() => window.location.reload()}
+  >
+    Reintentar carga
+  </button>
+</div>
+
           {syncError && (
   <details className="technical-error-details">
     <summary>Ver detalles técnicos</summary>

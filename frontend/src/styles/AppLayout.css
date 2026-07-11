@@ -1209,3 +1209,24 @@ html {
     text-align: center;
   }
 }
+
+
+.dashboard-error-card {
+  text-align: center;
+  border-color: rgba(255, 120, 120, 0.22);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 90, 90, 0.08),
+    rgba(255, 255, 255, 0.045)
+  );
+}
+
+.dashboard-error-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.dashboard-error-actions .secondary-button {
+  min-width: 180px;
+}
