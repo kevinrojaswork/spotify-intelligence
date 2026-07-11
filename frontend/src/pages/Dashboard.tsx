@@ -89,6 +89,8 @@ type TopListKey =
   | "top-songs"
   | "top-albums";
 
+type PlaylistContentFilter = "all" | "with-songs" | "empty";
+
 const TOP_LIST_PREVIEW_LIMIT = 5;
 const PLAYLIST_SEARCH_RESULT_LIMIT = 10;
 
@@ -108,6 +110,8 @@ function Dashboard() {
   const [showUpdateSuccess, setShowUpdateSuccess] = useState(false);
   const [isPlaylistSelectorOpen, setIsPlaylistSelectorOpen] = useState(false);
   const [playlistSearch, setPlaylistSearch] = useState("");
+  const [playlistContentFilter, setPlaylistContentFilter] =
+  useState<PlaylistContentFilter>("all");
   const [expandedTopLists, setExpandedTopLists] = useState<
   Record<TopListKey, boolean>
 >({
@@ -439,6 +443,7 @@ const loadSyncStatus = async (spotifyUserId: string) => {
     const spotifyUserId = getSpotifyUserId();
 
     setPlaylistSearch("");
+    setPlaylistContentFilter("all");
 
     if (!spotifyUserId) {
       setError("No hay una cuenta de Spotify conectada.");
@@ -486,6 +491,7 @@ const loadSyncStatus = async (spotifyUserId: string) => {
     localStorage.removeItem("selected_playlist_id");
     setSelectedPlaylistId("");
     setPlaylistSearch("");
+    setPlaylistContentFilter("all");
 
 
     try {
@@ -621,14 +627,25 @@ const filteredEmptyPlaylists = emptyPlaylists
     })
   );
 
-  const hasPlaylistSearchResults =
-    filteredPlaylistsWithSongs.length > 0 ||
-    filteredEmptyPlaylists.length > 0;
+const visiblePlaylistsWithSongs =
+  playlistContentFilter === "empty"
+    ? []
+    : filteredPlaylistsWithSongs;
+
+const visibleEmptyPlaylists =
+  playlistContentFilter === "with-songs"
+    ? []
+    : filteredEmptyPlaylists;
+
+const hasVisiblePlaylistResults =
+  visiblePlaylistsWithSongs.length > 0 ||
+  visibleEmptyPlaylists.length > 0;
+
 
   const playlistSearchResults = [
-    ...filteredPlaylistsWithSongs,
-    ...filteredEmptyPlaylists,
-  ];
+  ...visiblePlaylistsWithSongs,
+  ...visibleEmptyPlaylists,
+];
 
   const visiblePlaylistSearchResults = playlistSearchResults.slice(
     0,
@@ -639,19 +656,20 @@ const filteredEmptyPlaylists = emptyPlaylists
     playlistSearchResults.length - visiblePlaylistSearchResults.length;
 
   const renderPlaylistSearchResults = () => {
+
     if (!normalizedPlaylistSearch) {
       return null;
     }
 
-    if (!hasPlaylistSearchResults) {
-      return (
-        <div className="playlist-search-results">
-          <p className="playlist-search-empty">
-            No encontramos playlists con ese nombre.
-          </p>
-        </div>
-      );
-    }
+    if (!hasVisiblePlaylistResults) {
+  return (
+    <div className="playlist-search-results">
+      <p className="playlist-search-empty">
+        No encontramos playlists con ese nombre.
+      </p>
+    </div>
+  );
+}
 
     return (
       <div
@@ -914,6 +932,35 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     )}
   </div>
 
+
+  <div className="playlist-filter-tabs">
+  <button
+    type="button"
+    className={playlistContentFilter === "all" ? "active" : ""}
+    onClick={() => setPlaylistContentFilter("all")}
+  >
+    Todas ({playlists.length})
+  </button>
+
+  <button
+    type="button"
+    className={
+      playlistContentFilter === "with-songs" ? "active" : ""
+    }
+    onClick={() => setPlaylistContentFilter("with-songs")}
+  >
+    Con canciones ({playlistsWithSongs.length})
+  </button>
+
+  <button
+    type="button"
+    className={playlistContentFilter === "empty" ? "active" : ""}
+    onClick={() => setPlaylistContentFilter("empty")}
+  >
+    Vacías ({emptyPlaylists.length})
+  </button>
+</div>
+
   {renderPlaylistSearchResults()}
 
   <select
@@ -924,35 +971,35 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
   >
     <option value="">Toda mi biblioteca</option>
 
-    {filteredPlaylistsWithSongs.length > 0 && (
-      <optgroup
-        label={`Con canciones (${filteredPlaylistsWithSongs.length})`}
+    {visiblePlaylistsWithSongs.length > 0 && (
+  <optgroup
+    label={`Con canciones (${visiblePlaylistsWithSongs.length})`}
+  >
+    {visiblePlaylistsWithSongs.map((playlist) => (
+      <option
+        key={playlist.spotify_playlist_id}
+        value={playlist.spotify_playlist_id}
       >
-        {filteredPlaylistsWithSongs.map((playlist) => (
-          <option
-            key={playlist.spotify_playlist_id}
-            value={playlist.spotify_playlist_id}
-          >
-            {playlist.name} — {playlist.total_tracks} canciones
-          </option>
-        ))}
-      </optgroup>
-    )}
+        {playlist.name} — {playlist.total_tracks} canciones
+      </option>
+    ))}
+  </optgroup>
+)}
 
-    {filteredEmptyPlaylists.length > 0 && (
-      <optgroup
-        label={`Vacías (${filteredEmptyPlaylists.length})`}
+{visibleEmptyPlaylists.length > 0 && (
+  <optgroup
+    label={`Vacías (${visibleEmptyPlaylists.length})`}
+  >
+    {visibleEmptyPlaylists.map((playlist) => (
+      <option
+        key={playlist.spotify_playlist_id}
+        value={playlist.spotify_playlist_id}
       >
-        {filteredEmptyPlaylists.map((playlist) => (
-          <option
-            key={playlist.spotify_playlist_id}
-            value={playlist.spotify_playlist_id}
-          >
-            {playlist.name} — 0 canciones
-          </option>
-        ))}
-      </optgroup>
-    )}
+        {playlist.name} — 0 canciones
+      </option>
+    ))}
+  </optgroup>
+)}
   </select>
 
   {isChangingScope && <span>Cambiando análisis...</span>}
@@ -1058,6 +1105,35 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
                 )}
               </div>
 
+                <div className="playlist-filter-tabs">
+  <button
+    type="button"
+    className={playlistContentFilter === "all" ? "active" : ""}
+    onClick={() => setPlaylistContentFilter("all")}
+  >
+    Todas ({playlists.length})
+  </button>
+
+  <button
+    type="button"
+    className={
+      playlistContentFilter === "with-songs" ? "active" : ""
+    }
+    onClick={() => setPlaylistContentFilter("with-songs")}
+  >
+    Con canciones ({playlistsWithSongs.length})
+  </button>
+
+  <button
+    type="button"
+    className={playlistContentFilter === "empty" ? "active" : ""}
+    onClick={() => setPlaylistContentFilter("empty")}
+  >
+    Vacías ({emptyPlaylists.length})
+  </button>
+</div>
+
+
               {renderPlaylistSearchResults()}
 
               <select
@@ -1068,35 +1144,36 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 >
   <option value="">Toda mi biblioteca</option>
 
-  {filteredPlaylistsWithSongs.length > 0 && (
-    <optgroup
-      label={`Con canciones (${filteredPlaylistsWithSongs.length})`}
-    >
-      {filteredPlaylistsWithSongs.map((playlist) => (
-        <option
-          key={playlist.spotify_playlist_id}
-          value={playlist.spotify_playlist_id}
-        >
-          {playlist.name} — {playlist.total_tracks} canciones
-        </option>
-      ))}
-    </optgroup>
-  )}
+  {visiblePlaylistsWithSongs.length > 0 && (
+  <optgroup
+    label={`Con canciones (${visiblePlaylistsWithSongs.length})`}
+  >
+    {visiblePlaylistsWithSongs.map((playlist) => (
+      <option
+        key={playlist.spotify_playlist_id}
+        value={playlist.spotify_playlist_id}
+      >
+        {playlist.name} — {playlist.total_tracks} canciones
+      </option>
+    ))}
+  </optgroup>
+)}
 
-  {filteredEmptyPlaylists.length > 0 && (
-    <optgroup
-      label={`Vacías (${filteredEmptyPlaylists.length})`}
-    >
-      {filteredEmptyPlaylists.map((playlist) => (
-        <option
-          key={playlist.spotify_playlist_id}
-          value={playlist.spotify_playlist_id}
-        >
-          {playlist.name} — 0 canciones
-        </option>
-      ))}
-    </optgroup>
-  )}
+{visibleEmptyPlaylists.length > 0 && (
+  <optgroup
+    label={`Vacías (${visibleEmptyPlaylists.length})`}
+  >
+    {visibleEmptyPlaylists.map((playlist) => (
+      <option
+        key={playlist.spotify_playlist_id}
+        value={playlist.spotify_playlist_id}
+      >
+        {playlist.name} — 0 canciones
+      </option>
+    ))}
+  </optgroup>
+)}
+
 </select>
 
               {isChangingScope && <span>Cambiando análisis...</span>}
