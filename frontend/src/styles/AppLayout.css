@@ -1250,3 +1250,18 @@ html {
   opacity: 0.55;
   transform: none;
 }
+
+
+.spotify-account-message {
+  max-width: 560px;
+  margin: 0;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid rgba(30, 215, 96, 0.22);
+  border-radius: 14px;
+  background: rgba(30, 215, 96, 0.08);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.45;
+  text-align: center;
+}

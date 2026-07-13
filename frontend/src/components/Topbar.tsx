@@ -22,15 +22,34 @@ function Topbar() {
   const [connectedUser, setConnectedUser] = useState<ConnectedUser | null>(
     null
   );
+  const [accountMessage, setAccountMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const spotifyConnected = params.get("spotify_connected") === "true";
+    const spotifyCancelled = params.get("spotify_cancelled") === "true";
+    const spotifyAuthFailed = params.get("spotify_auth_failed") === "true";
     const spotifyUserIdFromUrl = params.get("spotify_user_id");
+
+    if (spotifyCancelled) {
+      localStorage.removeItem("spotify_account_change_pending");
+      setIsWorking(false);
+      setAccountMessage("Cambio de cuenta cancelado. Tu cuenta anterior sigue conectada.");
+    }
+
+    if (spotifyAuthFailed) {
+      localStorage.removeItem("spotify_account_change_pending");
+      setIsWorking(false);
+      setAccountMessage(
+        "No se pudo completar la conexión con Spotify. Intenta nuevamente."
+      );
+    }
 
     if (spotifyUserIdFromUrl) {
       localStorage.setItem("spotify_user_id", spotifyUserIdFromUrl);
+      localStorage.removeItem("spotify_account_change_pending");
       localStorage.setItem("analysis_update_started", "true");
+      setAccountMessage(null);
     }
 
     const savedSpotifyUserId = localStorage.getItem("spotify_user_id");
@@ -41,10 +60,16 @@ function Topbar() {
     }
 
     if (activeSpotifyUserId) {
-      loadConnectedUser(activeSpotifyUserId);
+      void loadConnectedUser(activeSpotifyUserId);
     }
 
-    if (spotifyConnected || spotifyUserIdFromUrl || params.get("sync")) {
+    if (
+      spotifyConnected ||
+      spotifyUserIdFromUrl ||
+      spotifyCancelled ||
+      spotifyAuthFailed ||
+      params.get("sync")
+    ) {
       window.history.replaceState(
         {},
         document.title,
@@ -73,6 +98,7 @@ function Topbar() {
   };
 
   const connectSpotify = () => {
+    setAccountMessage(null);
     setIsWorking(true);
     window.location.assign(SPOTIFY_AUTH_URL);
   };
@@ -86,6 +112,7 @@ function Topbar() {
     }
 
     try {
+      setAccountMessage(null);
       setIsWorking(true);
       localStorage.setItem("analysis_update_started", "true");
 
@@ -112,16 +139,21 @@ function Topbar() {
   };
 
   const changeAccount = () => {
-    localStorage.removeItem("spotify_user_id");
+    // Conservamos la cuenta actual hasta que Spotify confirme otra.
+    // Si el usuario cancela, la sesión anterior permanece intacta.
+    localStorage.setItem("spotify_account_change_pending", "true");
     localStorage.removeItem("analysis_update_started");
-    setConnectedUser(null);
+
+    setAccountMessage(
+      'En Spotify, pulsa "¿No eres tú?" para iniciar sesión con otra cuenta.'
+    );
     setIsWorking(true);
     window.location.assign(SPOTIFY_CHANGE_ACCOUNT_URL);
   };
 
   const handleSpotifyAction = () => {
     if (isConnected) {
-      updateAnalysis();
+      void updateAnalysis();
     } else {
       connectSpotify();
     }
@@ -180,7 +212,7 @@ function Topbar() {
           >
             {isWorking
               ? isConnected
-                ? "Sincronizando Spotify..."
+                ? "Abriendo Spotify..."
                 : "Abriendo Spotify..."
               : isConnected
               ? "Actualizar desde Spotify"
@@ -198,6 +230,12 @@ function Topbar() {
             </button>
           )}
         </div>
+
+        {accountMessage && (
+          <p className="spotify-account-message" role="status">
+            {accountMessage}
+          </p>
+        )}
 
         {isConnected && (
           <p className="dashboard-actions-hint">
