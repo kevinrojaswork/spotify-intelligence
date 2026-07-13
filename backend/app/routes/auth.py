@@ -1,3 +1,5 @@
+import traceback
+
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -86,6 +88,10 @@ def spotify_callback(
         return RedirectResponse(url=f"{FRONTEND_URL}/?{query}")
 
     except Exception as callback_error:
+        print("ERROR EN CALLBACK DE SPOTIFY:")
+        print(repr(callback_error))
+        traceback.print_exc()
+
         query = urlencode(
             {
                 "spotify_auth_failed": "true",
@@ -93,4 +99,6 @@ def spotify_callback(
             }
         )
 
-        return RedirectResponse(url=f"{FRONTEND_URL}/?{query}")
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}/?{query}"
+        )
