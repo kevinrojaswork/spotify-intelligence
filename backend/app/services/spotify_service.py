@@ -37,7 +37,10 @@ def save_token(code: str):
 
     init_db()
 
-    token_info = spotify_oauth.get_access_token(code)
+    token_info = spotify_oauth.get_access_token(
+    code,
+    check_cache=False,
+)
 
     access_token = token_info.get("access_token")
     refresh_token = token_info.get("refresh_token")
