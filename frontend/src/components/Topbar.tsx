@@ -46,11 +46,41 @@ function Topbar() {
     }
 
     if (spotifyUserIdFromUrl) {
-      localStorage.setItem("spotify_user_id", spotifyUserIdFromUrl);
-      localStorage.removeItem("spotify_account_change_pending");
-      localStorage.setItem("analysis_update_started", "true");
-      setAccountMessage(null);
-    }
+  const previousSpotifyUserId =
+    localStorage.getItem("spotify_user_id");
+
+  const accountChanged =
+    previousSpotifyUserId !== spotifyUserIdFromUrl;
+
+  localStorage.setItem(
+    "spotify_user_id",
+    spotifyUserIdFromUrl
+  );
+
+  localStorage.removeItem(
+    "spotify_account_change_pending"
+  );
+
+  localStorage.removeItem(
+    "selected_playlist_id"
+  );
+
+  localStorage.setItem(
+    "analysis_update_started",
+    "true"
+  );
+
+  if (accountChanged) {
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname
+    );
+
+    window.location.reload();
+    return;
+  }
+}
 
     const savedSpotifyUserId = localStorage.getItem("spotify_user_id");
     const activeSpotifyUserId = spotifyUserIdFromUrl || savedSpotifyUserId;
