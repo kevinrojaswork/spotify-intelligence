@@ -440,20 +440,90 @@ const loadSyncStatus = async (spotifyUserId: string) => {
 
 
 useEffect(() => {
+  let isCancelled = false;
+  let isCheckingConnection = false;
+
+  const verifyConnection = async () => {
+    if (!navigator.onLine) {
+      if (!isCancelled) {
+        setIsOnline(false);
+      }
+
+      return;
+    }
+
+    if (isCheckingConnection) {
+      return;
+    }
+
+    isCheckingConnection = true;
+
+    try {
+      await fetch(`${API_BASE_URL}/health?timestamp=${Date.now()}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!isCancelled) {
+        setIsOnline(true);
+      }
+    } catch (error) {
+      console.warn("No se pudo verificar la conexión:", error);
+
+      if (!isCancelled) {
+        setIsOnline(false);
+      }
+    } finally {
+      isCheckingConnection = false;
+    }
+  };
+
   const handleOnline = () => {
-    setIsOnline(true);
+    void verifyConnection();
   };
 
   const handleOffline = () => {
     setIsOnline(false);
   };
 
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible") {
+      void verifyConnection();
+    }
+  };
+
+  const handleWindowFocus = () => {
+    void verifyConnection();
+  };
+
   window.addEventListener("online", handleOnline);
   window.addEventListener("offline", handleOffline);
+  window.addEventListener("focus", handleWindowFocus);
+
+  document.addEventListener(
+    "visibilitychange",
+    handleVisibilityChange
+  );
+
+  void verifyConnection();
+
+  const connectionInterval = window.setInterval(() => {
+    void verifyConnection();
+  }, 10000);
 
   return () => {
+    isCancelled = true;
+
+    window.clearInterval(connectionInterval);
+
     window.removeEventListener("online", handleOnline);
     window.removeEventListener("offline", handleOffline);
+    window.removeEventListener("focus", handleWindowFocus);
+
+    document.removeEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
   };
 }, []);
 
@@ -484,6 +554,11 @@ useEffect(() => {
       setIsPlaylistSelectorOpen(false);
     } catch (error) {
       console.error("Error cambiando análisis:", error);
+
+      if (!navigator.onLine || error instanceof TypeError) {
+        setIsOnline(false);
+      }
+
       setError("No se pudo cambiar el análisis seleccionado.");
     } finally {
       setIsChangingScope(false);
@@ -520,6 +595,11 @@ useEffect(() => {
       setIsPlaylistSelectorOpen(false);
     } catch (error) {
       console.error("Error volviendo a biblioteca completa:", error);
+
+      if (!navigator.onLine || error instanceof TypeError) {
+  setIsOnline(false);
+}
+
       setError("No se pudo volver al análisis general.");
     } finally {
       setIsChangingScope(false);
