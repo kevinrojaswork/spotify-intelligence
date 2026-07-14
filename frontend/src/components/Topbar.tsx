@@ -29,6 +29,7 @@ function Topbar() {
     const spotifyConnected = params.get("spotify_connected") === "true";
     const spotifyCancelled = params.get("spotify_cancelled") === "true";
     const spotifyAuthFailed = params.get("spotify_auth_failed") === "true";
+    const spotifyError = params.get("spotify_error");
     const spotifyUserIdFromUrl = params.get("spotify_user_id");
 
     if (spotifyCancelled) {
@@ -40,9 +41,16 @@ function Topbar() {
     if (spotifyAuthFailed) {
       localStorage.removeItem("spotify_account_change_pending");
       setIsWorking(false);
-      setAccountMessage(
-        "No se pudo completar la conexión con Spotify. Intenta nuevamente."
-      );
+
+      if (spotifyError === "user_not_registered") {
+        setAccountMessage(
+          "Esta cuenta todavía no está autorizada para usar la aplicación. Agrégala en Users and Access dentro de Spotify Developers."
+        );
+      } else {
+        setAccountMessage(
+          "No se pudo completar la conexión con Spotify. Intenta nuevamente."
+        );
+      }
     }
 
     if (spotifyUserIdFromUrl) {

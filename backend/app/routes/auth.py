@@ -92,13 +92,19 @@ def spotify_callback(
         print(repr(callback_error))
         traceback.print_exc()
 
+        error_text = str(callback_error)
+        normalized_error = error_text.lower()
+
+        if "not registered for this application" in normalized_error:
+            error_code = "user_not_registered"
+        else:
+            error_code = "spotify_connection_failed"
+
         query = urlencode(
             {
                 "spotify_auth_failed": "true",
-                "spotify_error": str(callback_error),
+                "spotify_error": error_code,
             }
         )
 
-        return RedirectResponse(
-            url=f"{FRONTEND_URL}/?{query}"
-        )
+        return RedirectResponse(url=f"{FRONTEND_URL}/?{query}")
