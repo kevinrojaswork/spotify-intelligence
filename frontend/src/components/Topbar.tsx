@@ -31,6 +31,7 @@ function Topbar() {
     const spotifyAuthFailed = params.get("spotify_auth_failed") === "true";
     const spotifyError = params.get("spotify_error");
     const spotifyUserIdFromUrl = params.get("spotify_user_id");
+    const sessionTokenFromUrl = params.get("session_token");
 
     if (spotifyCancelled) {
       localStorage.removeItem("spotify_account_change_pending");
@@ -53,7 +54,7 @@ function Topbar() {
       }
     }
 
-    if (spotifyUserIdFromUrl) {
+    if (spotifyUserIdFromUrl && sessionTokenFromUrl) {
   const previousSpotifyUserId =
     localStorage.getItem("spotify_user_id");
 
@@ -64,6 +65,7 @@ function Topbar() {
     "spotify_user_id",
     spotifyUserIdFromUrl
   );
+  localStorage.setItem("session_token", sessionTokenFromUrl);
 
   localStorage.removeItem(
     "spotify_account_change_pending"
@@ -98,12 +100,13 @@ function Topbar() {
     }
 
     if (activeSpotifyUserId) {
-      void loadConnectedUser(activeSpotifyUserId);
+      void loadConnectedUser();
     }
 
     if (
       spotifyConnected ||
       spotifyUserIdFromUrl ||
+      sessionTokenFromUrl ||
       spotifyCancelled ||
       spotifyAuthFailed ||
       params.get("sync")
@@ -116,13 +119,19 @@ function Topbar() {
     }
   }, []);
 
-  const loadConnectedUser = async (spotifyUserId: string) => {
+  const loadConnectedUser = async () => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/me?spotify_user_id=${encodeURIComponent(
-          spotifyUserId
-        )}`
-      );
+      const sessionToken = localStorage.getItem("session_token");
+
+      if (!sessionToken) {
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/me`, {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
 
       if (!response.ok) {
         return;
@@ -154,11 +163,18 @@ function Topbar() {
       setIsWorking(true);
       localStorage.setItem("analysis_update_started", "true");
 
-      const response = await fetch(
-        `${API_BASE_URL}/load?spotify_user_id=${encodeURIComponent(
-          spotifyUserId
-        )}`
-      );
+      const sessionToken = localStorage.getItem("session_token");
+
+      if (!sessionToken) {
+        connectSpotify();
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/load`, {
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
 
       if (!response.ok) {
         localStorage.removeItem("analysis_update_started");

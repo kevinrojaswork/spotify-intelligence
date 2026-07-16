@@ -4,13 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database.db import init_db
-from app.routes import auth, profile, playlists, artists, songs, engine
+from app.routes import auth, engine
 
 
-# Ejecuta migraciones al iniciar el backend.
-# Esto asegura que la base persistente tenga las columnas nuevas.
 init_db()
-
 
 fastapi_app = FastAPI(title="Spotify Intelligence API")
 
@@ -27,11 +24,8 @@ def health():
         "service": "spotify-intelligence-backend",
     }
 
+
 fastapi_app.include_router(auth.router, prefix="/auth", tags=["Auth"])
-fastapi_app.include_router(profile.router, tags=["Profile"])
-fastapi_app.include_router(playlists.router, tags=["Playlists"])
-fastapi_app.include_router(artists.router, tags=["Artists"])
-fastapi_app.include_router(songs.router, tags=["Songs"])
 fastapi_app.include_router(engine.router, tags=["Engine"])
 
 
@@ -54,6 +48,6 @@ app = CORSMiddleware(
     app=fastapi_app,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )

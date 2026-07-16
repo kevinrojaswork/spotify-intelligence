@@ -10,9 +10,6 @@ from app.database.db import (
 )
 
 
-current_spotify_user_id = None
-
-
 def get_expires_at(token_info):
     expires_at = token_info.get("expires_at")
 
@@ -33,14 +30,12 @@ def get_user_image_url(user):
 
 
 def save_token(code: str):
-    global current_spotify_user_id
-
     init_db()
 
     token_info = spotify_oauth.get_access_token(
-    code,
-    check_cache=False,
-)
+        code,
+        check_cache=False,
+    )
 
     access_token = token_info.get("access_token")
     refresh_token = token_info.get("refresh_token")
@@ -70,8 +65,6 @@ def save_token(code: str):
         email=email,
         image_url=image_url,
     )
-
-    current_spotify_user_id = spotify_user_id
 
     return {
         "access_token": access_token,
@@ -119,8 +112,8 @@ def refresh_token_if_needed(spotify_user_id, token_data):
         return None
 
 
-def get_spotify_client(spotify_user_id=None):
-    user_id = spotify_user_id or current_spotify_user_id
+def get_spotify_client(spotify_user_id: str):
+    user_id = spotify_user_id
 
     if not user_id:
         return None
@@ -138,7 +131,3 @@ def get_spotify_client(spotify_user_id=None):
         return None
 
     return spotipy.Spotify(auth=access_token)
-
-
-def get_current_spotify_user_id():
-    return current_spotify_user_id

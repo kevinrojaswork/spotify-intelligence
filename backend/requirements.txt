@@ -2,3 +2,4 @@ fastapi
 uvicorn
 spotipy
 python-dotenv
+PyJWT

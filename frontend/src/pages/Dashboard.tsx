@@ -126,6 +126,18 @@ function Dashboard() {
     return localStorage.getItem("spotify_user_id");
   };
 
+  const getSessionHeaders = () => {
+    const sessionToken = localStorage.getItem("session_token");
+
+    if (!sessionToken) {
+      throw new Error("No hay una sesión válida.");
+    }
+
+    return {
+      Authorization: `Bearer ${sessionToken}`,
+    };
+  };
+
   const resolveValidPlaylistId = (
     storedPlaylistId: string,
     playlistList: PlaylistOption[]
@@ -146,18 +158,16 @@ function Dashboard() {
     return storedPlaylistId;
   };
 
-  const loadDashboard = async (
-  spotifyUserId: string,
-  playlistId?: string
-) => {
+  const loadDashboard = async (playlistId?: string) => {
   const playlistQuery = playlistId
-    ? `&playlist_id=${encodeURIComponent(playlistId)}`
+    ? `?playlist_id=${encodeURIComponent(playlistId)}`
     : "";
 
   const response = await fetch(
-    `${API_BASE_URL}/dashboard?spotify_user_id=${encodeURIComponent(
-      spotifyUserId
-    )}${playlistQuery}`
+    `${API_BASE_URL}/dashboard${playlistQuery}`,
+    {
+      headers: getSessionHeaders(),
+    }
   );
 
   const responseText = await response.text();
@@ -187,13 +197,11 @@ function Dashboard() {
 };
 
 
-  const loadPlaylists = async (spotifyUserId: string) => {
+  const loadPlaylists = async () => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/analysis-playlists?spotify_user_id=${encodeURIComponent(
-          spotifyUserId
-        )}`
-      );
+      const response = await fetch(`${API_BASE_URL}/analysis-playlists`, {
+        headers: getSessionHeaders(),
+      });
 
       if (response.status === 401) {
         console.warn(
@@ -238,12 +246,10 @@ function Dashboard() {
     }
   };
 
-const loadSyncStatus = async (spotifyUserId: string) => {
-  const response = await fetch(
-    `${API_BASE_URL}/sync-status?spotify_user_id=${encodeURIComponent(
-      spotifyUserId
-    )}`
-  );
+const loadSyncStatus = async () => {
+  const response = await fetch(`${API_BASE_URL}/sync-status`, {
+    headers: getSessionHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error("No se pudo revisar el estado de sincronización.");
@@ -287,7 +293,7 @@ const loadSyncStatus = async (spotifyUserId: string) => {
   const loadCachedDashboardFirst = async () => {
     setError(null);
 
-    let dashboardData = await loadDashboard(spotifyUserId, "");
+    let dashboardData = await loadDashboard("")
 
     if (!isMounted) {
       return dashboardData;
@@ -296,7 +302,7 @@ const loadSyncStatus = async (spotifyUserId: string) => {
     let playlistList: PlaylistOption[] = [];
 
     try {
-      playlistList = await loadPlaylists(spotifyUserId);
+      playlistList = await loadPlaylists()
     } catch (playlistError) {
       console.error(
         "No se pudieron cargar las playlists, pero sí cargamos la biblioteca:",
@@ -325,8 +331,7 @@ const loadSyncStatus = async (spotifyUserId: string) => {
 
     try {
       const playlistDashboardData = await loadDashboard(
-        spotifyUserId,
-        validPlaylistId
+        selectedPlaylistId
       );
 
       return playlistDashboardData;
@@ -339,14 +344,14 @@ const loadSyncStatus = async (spotifyUserId: string) => {
       localStorage.removeItem("selected_playlist_id");
       setSelectedPlaylistId("");
 
-      dashboardData = await loadDashboard(spotifyUserId, "");
+      dashboardData = await loadDashboard("")
       return dashboardData;
     }
   };
 
   const checkUntilSyncFinishes = async () => {
     try {
-      const statusData = await loadSyncStatus(spotifyUserId);
+      const statusData = await loadSyncStatus()
 
       if (statusData.status === "completed") {
         if (intervalId) {
@@ -387,7 +392,7 @@ const loadSyncStatus = async (spotifyUserId: string) => {
       } | null = null;
 
       try {
-        statusData = await loadSyncStatus(spotifyUserId);
+        statusData = await loadSyncStatus()
       } catch (statusError) {
         console.error(
           "No se pudo revisar el estado de sincronización, pero el dashboard ya cargó:",
@@ -550,7 +555,7 @@ useEffect(() => {
 
     try {
       setIsChangingScope(true);
-      await loadDashboard(spotifyUserId, newPlaylistId);
+      await loadDashboard(newPlaylistId)
       setIsPlaylistSelectorOpen(false);
     } catch (error) {
       console.error("Error cambiando análisis:", error);
@@ -591,7 +596,7 @@ useEffect(() => {
 
     try {
       setIsChangingScope(true);
-      await loadDashboard(spotifyUserId, "");
+      await loadDashboard("")
       setIsPlaylistSelectorOpen(false);
     } catch (error) {
       console.error("Error volviendo a biblioteca completa:", error);

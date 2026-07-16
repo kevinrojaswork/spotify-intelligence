@@ -1,12 +1,10 @@
 from typing import Optional
 import json
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 
-from app.services.spotify_service import (
-    get_spotify_client,
-    get_current_spotify_user_id,
-)
+from app.services.spotify_service import get_spotify_client
+from app.security import get_authenticated_spotify_user_id
 from app.engine.music_engine import engine
 from app.database.db import (
     init_db,
@@ -111,15 +109,8 @@ def sync_user_in_background(spotify_user_id: str):
 @router.get("/load")
 def load_engine(
     background_tasks: BackgroundTasks,
-    spotify_user_id: Optional[str] = None,
+    user_id: str = Depends(get_authenticated_spotify_user_id),
 ):
-    user_id = spotify_user_id or get_current_spotify_user_id()
-
-    if not user_id:
-        raise HTTPException(
-            status_code=400,
-            detail="No hay usuario de Spotify conectado."
-        )
 
     init_db()
 
@@ -160,16 +151,9 @@ def load_engine(
 
 @router.get("/dashboard")
 def get_dashboard(
-    spotify_user_id: Optional[str] = None,
     playlist_id: Optional[str] = None,
+    user_id: str = Depends(get_authenticated_spotify_user_id),
 ):
-    user_id = spotify_user_id or get_current_spotify_user_id()
-
-    if not user_id:
-        raise HTTPException(
-            status_code=400,
-            detail="No hay usuario de Spotify conectado."
-        )
 
     return engine.analyze(
         spotify_user_id=user_id,
@@ -178,14 +162,9 @@ def get_dashboard(
 
 
 @router.get("/analysis-playlists")
-def get_analysis_playlists(spotify_user_id: Optional[str] = None):
-    user_id = spotify_user_id or get_current_spotify_user_id()
-
-    if not user_id:
-        raise HTTPException(
-            status_code=400,
-            detail="No hay usuario de Spotify conectado."
-        )
+def get_analysis_playlists(
+    user_id: str = Depends(get_authenticated_spotify_user_id),
+):
 
     init_db()
 
@@ -249,14 +228,9 @@ def get_analysis_playlists(spotify_user_id: Optional[str] = None):
 
 
 @router.get("/sync-status")
-def get_sync_status(spotify_user_id: Optional[str] = None):
-    user_id = spotify_user_id or get_current_spotify_user_id()
-
-    if not user_id:
-        raise HTTPException(
-            status_code=400,
-            detail="No hay usuario de Spotify conectado."
-        )
+def get_sync_status(
+    user_id: str = Depends(get_authenticated_spotify_user_id),
+):
 
     status = get_metadata(f"sync_status:{user_id}") or "idle"
     error = get_metadata(f"sync_error:{user_id}") or ""
@@ -280,14 +254,9 @@ def get_sync_status(spotify_user_id: Optional[str] = None):
 
 
 @router.get("/me")
-def get_connected_user(spotify_user_id: Optional[str] = None):
-    user_id = spotify_user_id or get_current_spotify_user_id()
-
-    if not user_id:
-        raise HTTPException(
-            status_code=400,
-            detail="No hay usuario de Spotify conectado."
-        )
+def get_connected_user(
+    user_id: str = Depends(get_authenticated_spotify_user_id),
+):
 
     init_db()
 
