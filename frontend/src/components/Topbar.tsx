@@ -36,7 +36,9 @@ function Topbar() {
     if (spotifyCancelled) {
       localStorage.removeItem("spotify_account_change_pending");
       setIsWorking(false);
-      setAccountMessage("Cambio de cuenta cancelado. Tu cuenta anterior sigue conectada.");
+      setAccountMessage(
+        "Cambio de cuenta cancelado. Tu cuenta anterior sigue conectada."
+      );
     }
 
     if (spotifyAuthFailed) {
@@ -55,51 +57,34 @@ function Topbar() {
     }
 
     if (spotifyUserIdFromUrl && sessionTokenFromUrl) {
-  const previousSpotifyUserId =
-    localStorage.getItem("spotify_user_id");
+      const previousSpotifyUserId = localStorage.getItem("spotify_user_id");
+      const accountChanged = previousSpotifyUserId !== spotifyUserIdFromUrl;
 
-  const accountChanged =
-    previousSpotifyUserId !== spotifyUserIdFromUrl;
+      localStorage.setItem("spotify_user_id", spotifyUserIdFromUrl);
+      localStorage.setItem("session_token", sessionTokenFromUrl);
+      localStorage.removeItem("spotify_account_change_pending");
+      localStorage.removeItem("selected_playlist_id");
+      localStorage.setItem("analysis_update_started", "true");
 
-  localStorage.setItem(
-    "spotify_user_id",
-    spotifyUserIdFromUrl
-  );
-  localStorage.setItem("session_token", sessionTokenFromUrl);
+      if (accountChanged) {
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
+        window.location.reload();
+        return;
+      }
+    }
 
-  localStorage.removeItem(
-    "spotify_account_change_pending"
-  );
+    const activeSessionToken =
+      sessionTokenFromUrl || localStorage.getItem("session_token");
 
-  localStorage.removeItem(
-    "selected_playlist_id"
-  );
-
-  localStorage.setItem(
-    "analysis_update_started",
-    "true"
-  );
-
-  if (accountChanged) {
-    window.history.replaceState(
-      {},
-      document.title,
-      window.location.pathname
-    );
-
-    window.location.reload();
-    return;
-  }
-}
-
-    const savedSpotifyUserId = localStorage.getItem("spotify_user_id");
-    const activeSpotifyUserId = spotifyUserIdFromUrl || savedSpotifyUserId;
-
-    if (spotifyConnected || activeSpotifyUserId) {
+    if (spotifyConnected || activeSessionToken) {
       setIsConnected(true);
     }
 
-    if (activeSpotifyUserId) {
+    if (activeSessionToken) {
       void loadConnectedUser();
     }
 
@@ -124,6 +109,7 @@ function Topbar() {
       const sessionToken = localStorage.getItem("session_token");
 
       if (!sessionToken) {
+        setIsConnected(false);
         return;
       }
 
@@ -132,6 +118,14 @@ function Topbar() {
           Authorization: `Bearer ${sessionToken}`,
         },
       });
+
+      if (response.status === 401) {
+        setIsConnected(false);
+        setAccountMessage(
+          "Tu sesión de la aplicación expiró. Conecta Spotify nuevamente."
+        );
+        return;
+      }
 
       if (!response.ok) {
         return;
@@ -151,9 +145,9 @@ function Topbar() {
   };
 
   const updateAnalysis = async () => {
-    const spotifyUserId = localStorage.getItem("spotify_user_id");
+    const sessionToken = localStorage.getItem("session_token");
 
-    if (!spotifyUserId) {
+    if (!sessionToken) {
       connectSpotify();
       return;
     }
@@ -163,22 +157,27 @@ function Topbar() {
       setIsWorking(true);
       localStorage.setItem("analysis_update_started", "true");
 
-      const sessionToken = localStorage.getItem("session_token");
-
-      if (!sessionToken) {
-        connectSpotify();
-        return;
-      }
-
       const response = await fetch(`${API_BASE_URL}/load`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${sessionToken}`,
         },
       });
 
+      if (response.status === 401) {
+        localStorage.removeItem("analysis_update_started");
+        setAccountMessage(
+          "Tu conexión con Spotify expiró. Autoriza tu cuenta nuevamente para actualizar."
+        );
+        connectSpotify();
+        return;
+      }
+
       if (!response.ok) {
         localStorage.removeItem("analysis_update_started");
-        connectSpotify();
+        setAccountMessage(
+          "No pudimos iniciar la actualización. Tus datos guardados siguen disponibles; intenta nuevamente."
+        );
         return;
       }
 
@@ -186,15 +185,15 @@ function Topbar() {
     } catch (error) {
       console.error("Error actualizando análisis:", error);
       localStorage.removeItem("analysis_update_started");
-      connectSpotify();
+      setAccountMessage(
+        "No pudimos comunicarnos con el servidor. Tus datos guardados siguen disponibles."
+      );
     } finally {
       setIsWorking(false);
     }
   };
 
   const changeAccount = () => {
-    // Conservamos la cuenta actual hasta que Spotify confirme otra.
-    // Si el usuario cancela, la sesión anterior permanece intacta.
     localStorage.setItem("spotify_account_change_pending", "true");
     localStorage.removeItem("analysis_update_started");
 
@@ -266,7 +265,7 @@ function Topbar() {
           >
             {isWorking
               ? isConnected
-                ? "Abriendo Spotify..."
+                ? "Iniciando actualización..."
                 : "Abriendo Spotify..."
               : isConnected
               ? "Actualizar desde Spotify"

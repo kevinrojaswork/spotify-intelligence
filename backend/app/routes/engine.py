@@ -1,29 +1,41 @@
+import logging
+import os
 from typing import Optional
-import json
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
-from app.services.spotify_service import get_spotify_client
-from app.security import get_authenticated_spotify_user_id
-from app.engine.music_engine import engine
 from app.database.db import (
-    init_db,
-    get_metadata,
-    save_metadata,
-    get_spotify_user,
-    save_spotify_user,
-    get_user_playlists,
-    save_user_playlists,
     get_all_tracks,
+    get_spotify_user,
+    get_sync_state,
+    get_user_playlists,
+    init_db,
+    save_spotify_user,
+    save_user_playlists,
+    try_acquire_sync_lock,
 )
+from app.engine.music_engine import engine
+from app.security import get_authenticated_spotify_user_id
+from app.services.spotify_service import get_spotify_client
+from app.services.sync_service import run_spotify_sync
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def get_sync_stale_after_seconds() -> int:
+    raw_value = os.getenv("SYNC_STALE_AFTER_SECONDS", "900")
+
+    try:
+        return max(60, int(raw_value))
+    except ValueError:
+        return 900
 
 
 def get_user_image_url(user):
     images = user.get("images", [])
 
-    if images and len(images) > 0:
+    if images:
         return images[0].get("url")
 
     return None
@@ -34,18 +46,18 @@ def get_all_spotify_playlists(sp):
     results = sp.current_user_playlists(limit=50)
 
     while results:
-        playlists.extend(results["items"])
+        playlists.extend(results.get("items", []))
 
-        if results["next"]:
+        if results.get("next"):
             results = sp.next(results)
         else:
             break
 
     return playlists
 
+
 def get_cached_playlists_from_tracks(spotify_user_id: str):
     tracks = get_all_tracks(spotify_user_id)
-
     playlist_map = {}
 
     for track in tracks:
@@ -73,79 +85,48 @@ def get_cached_playlists_from_tracks(spotify_user_id: str):
     )
 
 
-def sync_user_in_background(spotify_user_id: str):
-    try:
-        init_db()
-
-        save_metadata(f"sync_status:{spotify_user_id}", "syncing")
-        save_metadata(f"sync_error:{spotify_user_id}", "")
-
-        sp = get_spotify_client(spotify_user_id)
-
-        if not sp:
-            save_metadata(f"sync_status:{spotify_user_id}", "error")
-            save_metadata(
-                f"sync_error:{spotify_user_id}",
-                "Necesitas conectar Spotify nuevamente."
-            )
-            save_metadata(f"sync_result:{spotify_user_id}", "")
-            return
-
-        result = engine.sync(sp, spotify_user_id)
-
-        save_metadata(f"sync_status:{spotify_user_id}", "completed")
-        save_metadata(
-            f"sync_result:{spotify_user_id}",
-            json.dumps(result, ensure_ascii=False),
-        )
-        save_metadata(f"sync_error:{spotify_user_id}", "")
-
-    except Exception as error:
-        save_metadata(f"sync_status:{spotify_user_id}", "error")
-        save_metadata(f"sync_error:{spotify_user_id}", str(error))
-        save_metadata(f"sync_result:{spotify_user_id}", "")
-
-
 @router.get("/load")
+@router.post("/load")
 def load_engine(
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_authenticated_spotify_user_id),
 ):
-
     init_db()
 
+    # Validamos la conexión antes de reservar el trabajo. Los datos guardados
+    # no se modifican si Spotify necesita una nueva autorización.
     sp = get_spotify_client(user_id)
 
     if not sp:
-        save_metadata(f"sync_status:{user_id}", "error")
-        save_metadata(
-            f"sync_error:{user_id}",
-            "Tu sesión de Spotify expiró. Conecta Spotify nuevamente."
-        )
-
         raise HTTPException(
             status_code=401,
-            detail="Tu sesión de Spotify expiró. Conecta Spotify nuevamente."
+            detail=(
+                "Tu conexión con Spotify expiró. "
+                "Vuelve a conectar tu cuenta para actualizar."
+            ),
         )
 
-    current_status = get_metadata(f"sync_status:{user_id}")
+    lock = try_acquire_sync_lock(
+        user_id,
+        stale_after_seconds=get_sync_stale_after_seconds(),
+    )
 
-    if current_status == "syncing":
+    if not lock["acquired"]:
         return {
             "message": "La sincronización ya está en progreso.",
             "spotify_user_id": user_id,
             "status": "syncing",
+            "already_running": True,
         }
 
-    save_metadata(f"sync_status:{user_id}", "syncing")
-    save_metadata(f"sync_error:{user_id}", "")
-
-    background_tasks.add_task(sync_user_in_background, user_id)
+    background_tasks.add_task(run_spotify_sync, user_id)
 
     return {
         "message": "Sincronización iniciada en segundo plano.",
         "spotify_user_id": user_id,
         "status": "syncing",
+        "already_running": False,
+        "recovered_stale": lock["recovered_stale"],
     }
 
 
@@ -154,7 +135,6 @@ def get_dashboard(
     playlist_id: Optional[str] = None,
     user_id: str = Depends(get_authenticated_spotify_user_id),
 ):
-
     return engine.analyze(
         spotify_user_id=user_id,
         spotify_playlist_id=playlist_id,
@@ -165,7 +145,6 @@ def get_dashboard(
 def get_analysis_playlists(
     user_id: str = Depends(get_authenticated_spotify_user_id),
 ):
-
     init_db()
 
     playlists = get_user_playlists(user_id)
@@ -197,15 +176,14 @@ def get_analysis_playlists(
             "source": "empty_cache",
             "needs_reconnect": True,
             "message": (
-                "La sesión de Spotify expiró, pero esto no debe bloquear "
-                "el análisis guardado."
+                "La conexión con Spotify expiró, pero el análisis guardado "
+                "continúa disponible."
             ),
         }
 
     try:
         spotify_playlists = get_all_spotify_playlists(sp)
         save_user_playlists(user_id, spotify_playlists)
-
         playlists = get_user_playlists(user_id)
 
         return {
@@ -215,15 +193,23 @@ def get_analysis_playlists(
             "needs_reconnect": False,
         }
 
-    except Exception as error:
+    except Exception:
+        logger.exception(
+            "No se pudieron cargar las playlists de Spotify para %s",
+            user_id,
+        )
+
         cached_playlists = get_cached_playlists_from_tracks(user_id)
 
         return {
             "spotify_user_id": user_id,
             "playlists": cached_playlists,
             "source": "spotify_error",
-            "needs_reconnect": True,
-            "message": str(error),
+            "needs_reconnect": False,
+            "message": (
+                "No pudimos consultar Spotify en este momento. "
+                "Mostramos los datos guardados disponibles."
+            ),
         }
 
 
@@ -231,25 +217,14 @@ def get_analysis_playlists(
 def get_sync_status(
     user_id: str = Depends(get_authenticated_spotify_user_id),
 ):
-
-    status = get_metadata(f"sync_status:{user_id}") or "idle"
-    error = get_metadata(f"sync_error:{user_id}") or ""
-
-    sync_result_raw = get_metadata(f"sync_result:{user_id}")
-    sync_result = None
-
-    if sync_result_raw:
-        try:
-            sync_result = json.loads(sync_result_raw)
-        except json.JSONDecodeError:
-            sync_result = None
-
+    state = get_sync_state(
+        user_id,
+        stale_after_seconds=get_sync_stale_after_seconds(),
+    )
 
     return {
         "spotify_user_id": user_id,
-        "status": status,
-        "error": error,
-        "result": sync_result,
+        **state,
     }
 
 
@@ -257,7 +232,6 @@ def get_sync_status(
 def get_connected_user(
     user_id: str = Depends(get_authenticated_spotify_user_id),
 ):
-
     init_db()
 
     saved_user = get_spotify_user(user_id)
@@ -290,3 +264,4 @@ def get_connected_user(
     )
 
     return get_spotify_user(user_id)
+

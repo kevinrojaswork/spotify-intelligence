@@ -1,18 +1,20 @@
+import logging
 import os
+
 from typing import Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import RedirectResponse
 
-from app.spotify import spotify_oauth
-from app.services.spotify_service import save_token, get_spotify_client
-from app.engine.music_engine import engine
-from app.database.db import init_db, save_metadata
+from app.database.db import init_db, try_acquire_sync_lock
 from app.security import create_session_token
-
+from app.services.spotify_service import save_token
+from app.services.sync_service import run_spotify_sync
+from app.spotify import spotify_oauth
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 FRONTEND_URL = os.getenv(
     "FRONTEND_URL",
@@ -20,34 +22,13 @@ FRONTEND_URL = os.getenv(
 )
 
 
-def sync_user_in_background(spotify_user_id: str):
+def get_sync_stale_after_seconds() -> int:
+    raw_value = os.getenv("SYNC_STALE_AFTER_SECONDS", "900")
+
     try:
-        init_db()
-
-        save_metadata(f"sync_status:{spotify_user_id}", "syncing")
-        save_metadata(f"sync_error:{spotify_user_id}", "")
-
-        sp = get_spotify_client(spotify_user_id)
-
-        if not sp:
-            save_metadata(f"sync_status:{spotify_user_id}", "error")
-            save_metadata(
-                f"sync_error:{spotify_user_id}",
-                "No se pudo crear el cliente de Spotify.",
-            )
-            return
-
-        engine.sync(sp, spotify_user_id)
-
-        save_metadata(f"sync_status:{spotify_user_id}", "completed")
-        save_metadata(f"sync_error:{spotify_user_id}", "")
-
-    except Exception:
-        save_metadata(f"sync_status:{spotify_user_id}", "error")
-        save_metadata(
-            f"sync_error:{spotify_user_id}",
-            "No se pudo completar la sincronización.",
-        )
+        return max(60, int(raw_value))
+    except ValueError:
+        return 900
 
 
 @router.get("/login")
@@ -74,25 +55,36 @@ def spotify_callback(
     try:
         token_data = save_token(code)
         spotify_user_id = token_data["spotify_user_id"]
-        session_token = create_session_token(spotify_user_id)
 
         init_db()
-        save_metadata(f"sync_status:{spotify_user_id}", "syncing")
-        save_metadata(f"sync_error:{spotify_user_id}", "")
 
-        background_tasks.add_task(sync_user_in_background, spotify_user_id)
+        lock = try_acquire_sync_lock(
+            spotify_user_id,
+            stale_after_seconds=get_sync_stale_after_seconds(),
+        )
+
+        if lock["acquired"]:
+            background_tasks.add_task(run_spotify_sync, spotify_user_id)
+            sync_value = "started"
+        else:
+            sync_value = "already_running"
+
+        session_token = create_session_token(spotify_user_id)
 
         query = urlencode(
             {
                 "spotify_connected": "true",
                 "spotify_user_id": spotify_user_id,
                 "session_token": session_token,
-                "sync": "started",
+                "sync": sync_value,
             }
         )
+
         return RedirectResponse(url=f"{FRONTEND_URL}/?{query}")
 
     except Exception as callback_error:
+        logger.exception("Error en callback de Spotify")
+
         normalized_error = str(callback_error).lower()
 
         if "not registered for this application" in normalized_error:
@@ -106,4 +98,6 @@ def spotify_callback(
                 "spotify_error": error_code,
             }
         )
+
         return RedirectResponse(url=f"{FRONTEND_URL}/?{query}")
+

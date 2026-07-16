@@ -219,6 +219,7 @@ function Dashboard() {
 
       if (!response.ok) {
         console.warn("No se pudieron cargar las playlists. Mostrando biblioteca.");
+        setNeedsReconnect(false);
 
         localStorage.removeItem("selected_playlist_id");
         setSelectedPlaylistId("");
@@ -237,7 +238,11 @@ function Dashboard() {
     } catch (error) {
       console.error("Error cargando playlists:", error);
 
-      setNeedsReconnect(true);
+      setNeedsReconnect(false);
+
+      if (!navigator.onLine || error instanceof TypeError) {
+        setIsOnline(false);
+      }
       localStorage.removeItem("selected_playlist_id");
       setSelectedPlaylistId("");
       setPlaylists([]);
@@ -270,181 +275,231 @@ const loadSyncStatus = async () => {
 
 
   useEffect(() => {
-  const sessionToken = getSessionToken();
-  const updateStarted =
-    localStorage.getItem("analysis_update_started") === "true";
+    const sessionToken = getSessionToken();
+    const updateStarted =
+      localStorage.getItem("analysis_update_started") === "true";
 
-  if (!sessionToken) {
-    setError("No hay una sesión válida.");
-    setIsLoading(false);
-    return;
-  }
-
-  let intervalId: number | undefined;
-  let isMounted = true;
-
-  const markUpdateCompleted = () => {
-    if (updateStarted) {
-      setShowUpdateSuccess(true);
-      localStorage.removeItem("analysis_update_started");
-    }
-  };
-
-  const loadCachedDashboardFirst = async () => {
-    setError(null);
-
-    let dashboardData = await loadDashboard("")
-
-    if (!isMounted) {
-      return dashboardData;
+    if (!sessionToken) {
+      setError("No hay una sesión válida.");
+      setIsLoading(false);
+      return;
     }
 
-    let playlistList: PlaylistOption[] = [];
+    let pollTimeoutId: number | undefined;
+    let isMounted = true;
+    let syncCheckInFlight = false;
+    let consecutiveStatusErrors = 0;
 
-    try {
-      playlistList = await loadPlaylists()
-    } catch (playlistError) {
-      console.error(
-        "No se pudieron cargar las playlists, pero sí cargamos la biblioteca:",
-        playlistError
-      );
-
-      localStorage.removeItem("selected_playlist_id");
-      setSelectedPlaylistId("");
-
-      return dashboardData;
-    }
-
-    const storedPlaylistId =
-      localStorage.getItem("selected_playlist_id") || "";
-
-    const validPlaylistId = resolveValidPlaylistId(
-      storedPlaylistId,
-      playlistList
-    );
-
-    setSelectedPlaylistId(validPlaylistId);
-
-    if (!validPlaylistId) {
-      return dashboardData;
-    }
-
-    try {
-      const playlistDashboardData = await loadDashboard(
-        validPlaylistId
-      );
-
-      return playlistDashboardData;
-    } catch (playlistDashboardError) {
-      console.error(
-        "No se pudo cargar la playlist seleccionada, volviendo a biblioteca:",
-        playlistDashboardError
-      );
-
-      localStorage.removeItem("selected_playlist_id");
-      setSelectedPlaylistId("");
-
-      dashboardData = await loadDashboard("")
-      return dashboardData;
-    }
-  };
-
-  const checkUntilSyncFinishes = async () => {
-    try {
-      const statusData = await loadSyncStatus()
-
-      if (statusData.status === "completed") {
-        if (intervalId) {
-          window.clearInterval(intervalId);
-        }
-
-        await loadCachedDashboardFirst();
-        markUpdateCompleted();
-        setIsLoading(false);
-      }
-
-      if (statusData.status === "error") {
-        if (intervalId) {
-          window.clearInterval(intervalId);
-        }
-
+    const markUpdateCompleted = () => {
+      if (updateStarted) {
+        setShowUpdateSuccess(true);
         localStorage.removeItem("analysis_update_started");
-        setSyncError(
-          statusData.error ||
-            "Ocurrió un error mientras sincronizábamos Spotify."
-        );
-        setSyncStatus("error");
-        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error revisando sincronización:", error);
-    }
-  };
+    };
 
-  const start = async () => {
-    try {
-      await loadCachedDashboardFirst();
+    const loadCachedDashboardFirst = async () => {
+      setError(null);
 
-      let statusData: {
-        status: SyncStatus;
-        error: string;
-        result: SyncResult | null;
-      } | null = null;
+      let dashboardData = await loadDashboard("");
+
+      if (!isMounted) {
+        return dashboardData;
+      }
+
+      let playlistList: PlaylistOption[] = [];
 
       try {
-        statusData = await loadSyncStatus()
-      } catch (statusError) {
+        playlistList = await loadPlaylists();
+      } catch (playlistError) {
         console.error(
-          "No se pudo revisar el estado de sincronización, pero el dashboard ya cargó:",
-          statusError
+          "No se pudieron cargar las playlists, pero sí cargamos la biblioteca:",
+          playlistError
         );
 
-        setSyncStatus("completed");
-        setSyncError("");
+        localStorage.removeItem("selected_playlist_id");
+        setSelectedPlaylistId("");
+
+        return dashboardData;
       }
 
-      if (statusData?.status === "completed") {
-        if (updateStarted) {
-          await loadCachedDashboardFirst();
+      const storedPlaylistId =
+        localStorage.getItem("selected_playlist_id") || "";
+
+      const validPlaylistId = resolveValidPlaylistId(
+        storedPlaylistId,
+        playlistList
+      );
+
+      setSelectedPlaylistId(validPlaylistId);
+
+      if (!validPlaylistId) {
+        return dashboardData;
+      }
+
+      try {
+        const playlistDashboardData = await loadDashboard(validPlaylistId);
+        return playlistDashboardData;
+      } catch (playlistDashboardError) {
+        console.error(
+          "No se pudo cargar la playlist seleccionada, volviendo a biblioteca:",
+          playlistDashboardError
+        );
+
+        localStorage.removeItem("selected_playlist_id");
+        setSelectedPlaylistId("");
+
+        dashboardData = await loadDashboard("");
+        return dashboardData;
+      }
+    };
+
+    const scheduleNextSyncCheck = (
+      callback: () => void,
+      delay = 4000
+    ) => {
+      if (!isMounted) {
+        return;
+      }
+
+      if (pollTimeoutId) {
+        window.clearTimeout(pollTimeoutId);
+      }
+
+      pollTimeoutId = window.setTimeout(callback, delay);
+    };
+
+    const checkUntilSyncFinishes = async () => {
+      if (!isMounted || syncCheckInFlight) {
+        return;
+      }
+
+      syncCheckInFlight = true;
+      let shouldContinuePolling = false;
+
+      try {
+        const statusData = await loadSyncStatus();
+        consecutiveStatusErrors = 0;
+
+        if (!isMounted) {
+          return;
         }
 
-        markUpdateCompleted();
-      }
-
-      if (statusData?.status === "syncing") {
-        // Siempre seguimos el estado real. Para un usuario nuevo esto evita
-        // mostrar ceros mientras la primera sincronización sigue en curso.
-        intervalId = window.setInterval(checkUntilSyncFinishes, 4000);
-      }
-
-      if (statusData?.status === "error") {
-        localStorage.removeItem("analysis_update_started");
-        setSyncError(
-          statusData.error ||
-            "Ocurrió un error mientras sincronizábamos Spotify."
-        );
+        if (statusData.status === "completed") {
+          await loadCachedDashboardFirst();
+          markUpdateCompleted();
+          setIsLoading(false);
+        } else if (statusData.status === "error") {
+          localStorage.removeItem("analysis_update_started");
+          setSyncError(
+            statusData.error ||
+              "No pudimos completar la actualización. Tus datos guardados siguen disponibles."
+          );
           setSyncStatus("error");
+          setIsLoading(false);
+        } else if (statusData.status === "syncing") {
+          setIsLoading(false);
+          shouldContinuePolling = true;
+        } else {
+          setIsLoading(false);
+        }
+      } catch (statusError) {
+        console.error("Error revisando sincronización:", statusError);
+        consecutiveStatusErrors += 1;
+        shouldContinuePolling = true;
+
+        if (consecutiveStatusErrors >= 3 && isMounted) {
+          setIsLoading(false);
+          setSyncError(
+            "No pudimos comprobar el estado de la actualización. Tus datos guardados siguen disponibles."
+          );
+        }
+      } finally {
+        syncCheckInFlight = false;
+
+        if (shouldContinuePolling && isMounted) {
+          scheduleNextSyncCheck(
+            () => void checkUntilSyncFinishes(),
+            4000
+          );
+        }
       }
+    };
 
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error inicial cargando dashboard:", error);
-      setError("No se pudo cargar tu análisis musical.");
-      setIsLoading(false);
-    }
-  };
+    const start = async () => {
+      try {
+        const dashboardData = await loadCachedDashboardFirst();
 
-  start();
+        let statusData: {
+          status: SyncStatus;
+          error: string;
+          result: SyncResult | null;
+        } | null = null;
 
-  return () => {
-    isMounted = false;
+        try {
+          statusData = await loadSyncStatus();
+        } catch (statusError) {
+          console.error(
+            "No se pudo revisar el estado de sincronización, pero el dashboard ya cargó:",
+            statusError
+          );
 
-    if (intervalId) {
-      window.clearInterval(intervalId);
-    }
-  };
-}, []);
+          if (dashboardData?.total_tracks > 0) {
+            setIsLoading(false);
+          }
 
+          scheduleNextSyncCheck(
+            () => void checkUntilSyncFinishes(),
+            4000
+          );
+          return;
+        }
+
+        if (statusData.status === "completed") {
+          if (updateStarted) {
+            await loadCachedDashboardFirst();
+          }
+
+          markUpdateCompleted();
+          setIsLoading(false);
+          return;
+        }
+
+        if (statusData.status === "syncing") {
+          setIsLoading(false);
+          scheduleNextSyncCheck(
+            () => void checkUntilSyncFinishes(),
+            4000
+          );
+          return;
+        }
+
+        if (statusData.status === "error") {
+          localStorage.removeItem("analysis_update_started");
+          setSyncError(
+            statusData.error ||
+              "No pudimos completar la actualización. Tus datos guardados siguen disponibles."
+          );
+          setSyncStatus("error");
+        }
+
+        setIsLoading(false);
+      } catch (initialError) {
+        console.error("Error inicial cargando dashboard:", initialError);
+        setError("No se pudo cargar tu análisis musical.");
+        setIsLoading(false);
+      }
+    };
+
+    void start();
+
+    return () => {
+      isMounted = false;
+
+      if (pollTimeoutId) {
+        window.clearTimeout(pollTimeoutId);
+      }
+    };
+  }, []);
 
 useEffect(() => {
   let isCancelled = false;
@@ -944,13 +999,6 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
             {isOnline ? "Reintentar carga" : "Esperando conexión..."}
           </button>
         </div>
-
-        {syncError && (
-          <details className="technical-error-details">
-            <summary>Ver detalles técnicos</summary>
-            <p>{syncError}</p>
-          </details>
-        )}
       </section>
     </div>
   );
@@ -1360,6 +1408,17 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
         </section>
       )}
 
+      {syncStatus === "error" && (
+        <section className="discovery-card dashboard-error-card">
+          <p className="section-label">Actualización interrumpida</p>
+          <h2>Tus datos guardados siguen disponibles.</h2>
+          <p>
+            {syncError ||
+              "No pudimos completar la actualización. Intenta nuevamente más tarde."}
+          </p>
+        </section>
+      )}
+
       <nav className="dashboard-section-nav">
   <a href="#dashboard-summary">Resumen</a>
   <a href="#musical-dna">ADN Musical</a>
@@ -1572,3 +1631,4 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 }
 
 export default Dashboard;
+

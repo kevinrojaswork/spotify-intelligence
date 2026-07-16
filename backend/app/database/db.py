@@ -1,5 +1,7 @@
+import json
 import os
 import sqlite3
+import time
 from pathlib import Path
 from typing import Any
 
@@ -15,8 +17,9 @@ DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout = 30000")
     return conn
 
 
@@ -498,6 +501,474 @@ def get_metadata(key: str) -> str | None:
     conn.close()
 
     return row["value"] if row else None
+
+
+
+def _get_metadata_with_connection(conn, key: str) -> str | None:
+    cursor = conn.execute(
+        """
+        SELECT value
+        FROM metadata
+        WHERE key = ?
+        """,
+        (key,),
+    )
+    row = cursor.fetchone()
+    return row["value"] if row else None
+
+
+def _save_metadata_with_connection(conn, key: str, value: str):
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO metadata (key, value)
+        VALUES (?, ?)
+        """,
+        (key, value),
+    )
+
+
+def _safe_int(value: str | None, default: int = 0) -> int:
+    try:
+        return int(value) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
+def try_acquire_sync_lock(
+    spotify_user_id: str,
+    stale_after_seconds: int = 900,
+) -> dict:
+    """
+    Reserva de forma atómica la sincronización de un usuario.
+
+    Dos solicitudes simultáneas no pueden adquirir el mismo bloqueo.
+    Un bloqueo sin actividad durante demasiado tiempo se considera abandonado.
+    """
+    now = int(time.time())
+    stale_after_seconds = max(60, int(stale_after_seconds))
+
+    conn = get_connection()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+
+        status_key = f"sync_status:{spotify_user_id}"
+        heartbeat_key = f"sync_heartbeat:{spotify_user_id}"
+
+        current_status = _get_metadata_with_connection(conn, status_key) or "idle"
+        heartbeat = _safe_int(
+            _get_metadata_with_connection(conn, heartbeat_key),
+            default=0,
+        )
+
+        active_sync = (
+            current_status == "syncing"
+            and heartbeat > 0
+            and now - heartbeat < stale_after_seconds
+        )
+
+        if active_sync:
+            started_at = _get_metadata_with_connection(
+                conn,
+                f"sync_started_at:{spotify_user_id}",
+            )
+            conn.commit()
+            return {
+                "acquired": False,
+                "status": "syncing",
+                "recovered_stale": False,
+                "started_at": started_at,
+            }
+
+        recovered_stale = current_status == "syncing"
+
+        _save_metadata_with_connection(conn, status_key, "syncing")
+        _save_metadata_with_connection(
+            conn,
+            f"sync_error:{spotify_user_id}",
+            "",
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_result:{spotify_user_id}",
+            "",
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_started_at:{spotify_user_id}",
+            str(now),
+        )
+        _save_metadata_with_connection(conn, heartbeat_key, str(now))
+        _save_metadata_with_connection(
+            conn,
+            f"sync_finished_at:{spotify_user_id}",
+            "",
+        )
+
+        conn.commit()
+
+        return {
+            "acquired": True,
+            "status": "syncing",
+            "recovered_stale": recovered_stale,
+            "started_at": str(now),
+        }
+
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def touch_sync_heartbeat(spotify_user_id: str):
+    now = int(time.time())
+    conn = get_connection()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+
+        current_status = _get_metadata_with_connection(
+            conn,
+            f"sync_status:{spotify_user_id}",
+        )
+
+        if current_status == "syncing":
+            _save_metadata_with_connection(
+                conn,
+                f"sync_heartbeat:{spotify_user_id}",
+                str(now),
+            )
+
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def mark_sync_failed(
+    spotify_user_id: str,
+    user_message: str,
+):
+    now = int(time.time())
+    conn = get_connection()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        _save_metadata_with_connection(
+            conn,
+            f"sync_status:{spotify_user_id}",
+            "error",
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_error:{spotify_user_id}",
+            user_message,
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_result:{spotify_user_id}",
+            "",
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_finished_at:{spotify_user_id}",
+            str(now),
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_heartbeat:{spotify_user_id}",
+            str(now),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def recover_stale_sync(
+    spotify_user_id: str,
+    stale_after_seconds: int = 900,
+) -> bool:
+    now = int(time.time())
+    stale_after_seconds = max(60, int(stale_after_seconds))
+
+    conn = get_connection()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+
+        status_key = f"sync_status:{spotify_user_id}"
+        heartbeat_key = f"sync_heartbeat:{spotify_user_id}"
+
+        current_status = _get_metadata_with_connection(conn, status_key) or "idle"
+
+        if current_status != "syncing":
+            conn.commit()
+            return False
+
+        heartbeat = _safe_int(
+            _get_metadata_with_connection(conn, heartbeat_key),
+            default=0,
+        )
+
+        is_stale = heartbeat <= 0 or now - heartbeat >= stale_after_seconds
+
+        if not is_stale:
+            conn.commit()
+            return False
+
+        _save_metadata_with_connection(conn, status_key, "error")
+        _save_metadata_with_connection(
+            conn,
+            f"sync_error:{spotify_user_id}",
+            (
+                "La actualización anterior se interrumpió. "
+                "Tus datos guardados siguen disponibles; intenta actualizar nuevamente."
+            ),
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_result:{spotify_user_id}",
+            "",
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_finished_at:{spotify_user_id}",
+            str(now),
+        )
+        _save_metadata_with_connection(conn, heartbeat_key, str(now))
+
+        conn.commit()
+        return True
+
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def get_sync_state(
+    spotify_user_id: str,
+    stale_after_seconds: int = 900,
+) -> dict:
+    recover_stale_sync(
+        spotify_user_id,
+        stale_after_seconds=stale_after_seconds,
+    )
+
+    status = get_metadata(f"sync_status:{spotify_user_id}") or "idle"
+    error = get_metadata(f"sync_error:{spotify_user_id}") or ""
+    result_raw = get_metadata(f"sync_result:{spotify_user_id}") or ""
+
+    result = None
+
+    if result_raw:
+        try:
+            result = json.loads(result_raw)
+        except json.JSONDecodeError:
+            result = None
+
+    return {
+        "status": status,
+        "error": error,
+        "result": result,
+        "started_at": get_metadata(f"sync_started_at:{spotify_user_id}"),
+        "finished_at": get_metadata(f"sync_finished_at:{spotify_user_id}"),
+    }
+
+
+def apply_music_sync(
+    spotify_user_id: str,
+    playlists: list[dict],
+    tracks_by_playlist: dict[str, list[dict]],
+    sync_result: dict,
+    synced_at: str,
+):
+    """
+    Aplica toda la sincronización en una sola transacción.
+
+    Nada se elimina ni se reemplaza hasta que Spotify terminó de entregar
+    todas las playlists que necesitaban actualizarse. Si esta transacción
+    falla, SQLite revierte los cambios y conserva el análisis anterior.
+    """
+    current_playlist_ids = [
+        playlist.get("id")
+        for playlist in playlists
+        if playlist.get("id")
+    ]
+
+    now = int(time.time())
+    conn = get_connection()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+
+        if current_playlist_ids:
+            placeholders = ",".join(["?"] * len(current_playlist_ids))
+
+            conn.execute(
+                f"""
+                DELETE FROM spotify_playlists
+                WHERE spotify_user_id = ?
+                AND spotify_playlist_id NOT IN ({placeholders})
+                """,
+                [spotify_user_id, *current_playlist_ids],
+            )
+
+            conn.execute(
+                f"""
+                DELETE FROM tracks
+                WHERE spotify_user_id = ?
+                AND spotify_playlist_id NOT IN ({placeholders})
+                """,
+                [spotify_user_id, *current_playlist_ids],
+            )
+        else:
+            conn.execute(
+                """
+                DELETE FROM spotify_playlists
+                WHERE spotify_user_id = ?
+                """,
+                (spotify_user_id,),
+            )
+            conn.execute(
+                """
+                DELETE FROM tracks
+                WHERE spotify_user_id = ?
+                """,
+                (spotify_user_id,),
+            )
+
+        for playlist in playlists:
+            playlist_id = playlist.get("id")
+
+            if not playlist_id:
+                continue
+
+            owner = playlist.get("owner") or {}
+            tracks_info = playlist.get("tracks") or {}
+            playlist_name = playlist.get("name", "Sin nombre")
+
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO spotify_playlists (
+                    spotify_user_id,
+                    spotify_playlist_id,
+                    name,
+                    total_tracks,
+                    owner_name,
+                    is_public,
+                    snapshot_id
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    spotify_user_id,
+                    playlist_id,
+                    playlist_name,
+                    tracks_info.get("total", 0),
+                    owner.get("display_name")
+                    or owner.get("id")
+                    or "Desconocido",
+                    1 if playlist.get("public") else 0,
+                    playlist.get("snapshot_id"),
+                ),
+            )
+
+            conn.execute(
+                """
+                UPDATE tracks
+                SET playlist = ?
+                WHERE spotify_user_id = ?
+                AND spotify_playlist_id = ?
+                """,
+                (playlist_name, spotify_user_id, playlist_id),
+            )
+
+        for playlist_id, tracks in tracks_by_playlist.items():
+            conn.execute(
+                """
+                DELETE FROM tracks
+                WHERE spotify_user_id = ?
+                AND spotify_playlist_id = ?
+                """,
+                (spotify_user_id, playlist_id),
+            )
+
+            rows = []
+
+            for track in tracks:
+                rows.append(
+                    (
+                        spotify_user_id,
+                        track.get("spotify_playlist_id"),
+                        track.get("playlist"),
+                        track.get("track_name"),
+                        normalize_artists(track.get("artists")),
+                        track.get("album"),
+                    )
+                )
+
+            if rows:
+                conn.executemany(
+                    """
+                    INSERT INTO tracks (
+                        spotify_user_id,
+                        spotify_playlist_id,
+                        playlist,
+                        track_name,
+                        artists,
+                        album
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    rows,
+                )
+
+        _save_metadata_with_connection(
+            conn,
+            f"last_sync:{spotify_user_id}",
+            synced_at,
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_status:{spotify_user_id}",
+            "completed",
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_error:{spotify_user_id}",
+            "",
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_result:{spotify_user_id}",
+            json.dumps(sync_result, ensure_ascii=False),
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_finished_at:{spotify_user_id}",
+            str(now),
+        )
+        _save_metadata_with_connection(
+            conn,
+            f"sync_heartbeat:{spotify_user_id}",
+            str(now),
+        )
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def save_spotify_token(
