@@ -3,26 +3,39 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Layout from "./components/Layout";
 
-function App() {
-  const [started, setStarted] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const spotifyConnected = params.get("spotify_connected") === "true";
-    const spotifyUserIdFromUrl = params.get("spotify_user_id");
-    const spotifyUserIdFromStorage = localStorage.getItem("spotify_user_id");
+const SESSION_STORAGE_KEY = "session_token";
+const SPOTIFY_USER_STORAGE_KEY = "spotify_user_id";
 
+function App() {
+  const [hasSession] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const spotifyUserIdFromUrl = params.get("spotify_user_id");
+    const sessionTokenFromUrl = params.get("session_token");
+
+    // Guardamos la sesión antes de montar Dashboard y Topbar.
+    // Esto evita que el primer ingreso intente cargar datos sin el token.
     if (spotifyUserIdFromUrl) {
-      localStorage.setItem("spotify_user_id", spotifyUserIdFromUrl);
+      localStorage.setItem(
+        SPOTIFY_USER_STORAGE_KEY,
+        spotifyUserIdFromUrl
+      );
+    }
+
+    if (sessionTokenFromUrl) {
+      localStorage.setItem(
+        SESSION_STORAGE_KEY,
+        sessionTokenFromUrl
+      );
     }
 
     return Boolean(
-      spotifyConnected ||
-      spotifyUserIdFromUrl ||
-      spotifyUserIdFromStorage
+      sessionTokenFromUrl ||
+      localStorage.getItem(SESSION_STORAGE_KEY)
     );
   });
 
-  if (!started) {
-    return <Landing onStart={() => setStarted(true)} />;
+  if (!hasSession) {
+    return <Landing />;
   }
 
   return (

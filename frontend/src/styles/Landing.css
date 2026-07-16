@@ -1,68 +1,160 @@
 .landing {
   min-height: 100vh;
-  background: radial-gradient(circle at top, #1f3d2b 0%, #121212 45%);
+  padding: 32px 20px;
+  background:
+    radial-gradient(circle at top, rgba(29, 185, 84, 0.22), transparent 42%),
+    #121212;
   color: white;
   display: flex;
   justify-content: center;
   align-items: center;
   font-family: Arial, sans-serif;
+  box-sizing: border-box;
 }
 
-.hero {
+.landing-hero {
+  width: min(100%, 980px);
   text-align: center;
-  max-width: 900px;
-  padding: 40px;
+  padding: 48px 28px;
 }
 
-.badge {
+.landing-badge {
   color: #1db954;
-  font-weight: bold;
-  letter-spacing: 3px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  margin-bottom: 20px;
+  margin: 0 0 20px;
 }
 
-.hero h1 {
-  font-size: 78px;
+.landing-hero h1 {
   margin: 0;
   color: #1db954;
+  font-size: clamp(48px, 8vw, 82px);
+  line-height: 1;
+  letter-spacing: -0.05em;
 }
 
-.subtitle {
-  font-size: 26px;
-  line-height: 1.4;
-  margin: 25px auto;
-  max-width: 780px;
+.landing-subtitle {
+  max-width: 760px;
+  margin: 26px auto 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: clamp(20px, 3vw, 27px);
+  line-height: 1.45;
 }
 
-.primary-button {
-  margin-top: 25px;
-  background: #1db954;
-  color: white;
+.landing-primary-button {
+  margin-top: 30px;
   border: none;
-  padding: 18px 42px;
-  font-size: 19px;
-  font-weight: bold;
   border-radius: 999px;
+  padding: 17px 34px;
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  color: #06100a;
+  font-size: 18px;
+  font-weight: 900;
   cursor: pointer;
+  box-shadow: 0 18px 50px rgba(29, 185, 84, 0.28);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
 }
 
-.primary-button:hover {
-  background: #1ed760;
+.landing-primary-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 58px rgba(29, 185, 84, 0.36);
 }
 
-.features {
-  margin-top: 45px;
-  display: flex;
-  gap: 18px;
-  justify-content: center;
-  flex-wrap: wrap;
+.landing-primary-button:focus-visible {
+  outline: 3px solid rgba(124, 255, 178, 0.8);
+  outline-offset: 4px;
 }
 
-.features span {
-  background: #181818;
-  border: 1px solid #2a2a2a;
-  padding: 14px 22px;
-  border-radius: 999px;
-  color: #dcdcdc;
+.landing-primary-button:disabled {
+  opacity: 0.68;
+  cursor: wait;
+}
+
+.landing-privacy-note {
+  margin: 15px auto 0;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 14px;
+}
+
+.landing-message {
+  max-width: 680px;
+  margin: 22px auto 0;
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.075);
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.5;
+}
+
+.landing-steps {
+  margin-top: 48px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  text-align: left;
+}
+
+.landing-steps article {
+  min-height: 150px;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.055);
+  backdrop-filter: blur(14px);
+}
+
+.landing-steps span {
+  width: 34px;
+  height: 34px;
+  margin-bottom: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(29, 185, 84, 0.18);
+  color: #1db954;
+  font-weight: 900;
+}
+
+.landing-steps strong {
+  display: block;
+  color: #ffffff;
+  font-size: 17px;
+}
+
+.landing-steps p {
+  margin: 9px 0 0;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .landing {
+    align-items: flex-start;
+  }
+
+  .landing-hero {
+    padding: 40px 0 24px;
+  }
+
+  .landing-primary-button {
+    width: 100%;
+  }
+
+  .landing-steps {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .landing-steps article {
+    min-height: auto;
+  }
+
+  .landing-steps span {
+    margin-inline: auto;
+  }
 }

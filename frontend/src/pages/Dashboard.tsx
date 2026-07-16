@@ -122,12 +122,12 @@ function Dashboard() {
   "top-albums": false,
 });
 
-  const getSpotifyUserId = () => {
-    return localStorage.getItem("spotify_user_id");
+  const getSessionToken = () => {
+    return localStorage.getItem("session_token");
   };
 
   const getSessionHeaders = () => {
-    const sessionToken = localStorage.getItem("session_token");
+    const sessionToken = getSessionToken();
 
     if (!sessionToken) {
       throw new Error("No hay una sesión válida.");
@@ -270,12 +270,12 @@ const loadSyncStatus = async () => {
 
 
   useEffect(() => {
-  const spotifyUserId = getSpotifyUserId();
+  const sessionToken = getSessionToken();
   const updateStarted =
     localStorage.getItem("analysis_update_started") === "true";
 
-  if (!spotifyUserId) {
-    setError(null);
+  if (!sessionToken) {
+    setError("No hay una sesión válida.");
     setIsLoading(false);
     return;
   }
@@ -331,7 +331,7 @@ const loadSyncStatus = async () => {
 
     try {
       const playlistDashboardData = await loadDashboard(
-        selectedPlaylistId
+        validPlaylistId
       );
 
       return playlistDashboardData;
@@ -404,15 +404,17 @@ const loadSyncStatus = async () => {
       }
 
       if (statusData?.status === "completed") {
+        if (updateStarted) {
+          await loadCachedDashboardFirst();
+        }
+
         markUpdateCompleted();
       }
 
       if (statusData?.status === "syncing") {
-        if (updateStarted) {
-          intervalId = window.setInterval(checkUntilSyncFinishes, 4000);
-        } else {
-          setSyncStatus("completed");
-        }
+        // Siempre seguimos el estado real. Para un usuario nuevo esto evita
+        // mostrar ceros mientras la primera sincronización sigue en curso.
+        intervalId = window.setInterval(checkUntilSyncFinishes, 4000);
       }
 
       if (statusData?.status === "error") {
@@ -535,13 +537,13 @@ useEffect(() => {
 
 
   const selectPlaylistForAnalysis = async (newPlaylistId: string) => {
-    const spotifyUserId = getSpotifyUserId();
+    const sessionToken = getSessionToken();
 
     setPlaylistSearch("");
     setPlaylistContentFilter("all");
 
-    if (!spotifyUserId) {
-      setError("No hay una cuenta de Spotify conectada.");
+    if (!sessionToken) {
+      setError("No hay una sesión válida de Spotify.");
       return;
     }
 
@@ -581,10 +583,10 @@ useEffect(() => {
   };
 
   const handleReturnToLibrary = async () => {
-    const spotifyUserId = getSpotifyUserId();
+    const sessionToken = getSessionToken();
 
-    if (!spotifyUserId) {
-      setError("No hay una cuenta de Spotify conectada.");
+    if (!sessionToken) {
+      setError("No hay una sesión válida de Spotify.");
       return;
     }
 
@@ -894,9 +896,9 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
   );
 };
 
-  const hasConnectedSpotifyUser = Boolean(getSpotifyUserId());
+  const hasValidSession = Boolean(getSessionToken());
 
-  if (!hasConnectedSpotifyUser) {
+  if (!hasValidSession) {
     return null;
   }
 
@@ -977,8 +979,8 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           <p className="section-label">Análisis no disponible</p>
 <h2>Todavía no hay datos musicales guardados.</h2>
 <p>
-  Presiona <strong>Actualizar análisis</strong> para sincronizar tu cuenta de
-  Spotify por primera vez. Después, tus datos se cargarán automáticamente.
+  Usa <strong>Actualizar desde Spotify</strong> para volver a iniciar la
+  sincronización. Después, tus datos se cargarán automáticamente.
 </p>
         </section>
       </div>
