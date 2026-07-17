@@ -19,8 +19,11 @@ type ConnectedUser = {
 function Topbar() {
   const [isConnected, setIsConnected] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(
+    () => localStorage.getItem("analysis_update_started") === "true",
+  );
   const [connectedUser, setConnectedUser] = useState<ConnectedUser | null>(
-    null
+    null,
   );
   const [accountMessage, setAccountMessage] = useState<string | null>(null);
 
@@ -37,7 +40,7 @@ function Topbar() {
       localStorage.removeItem("spotify_account_change_pending");
       setIsWorking(false);
       setAccountMessage(
-        "Cambio de cuenta cancelado. Tu cuenta anterior sigue conectada."
+        "Cambio de cuenta cancelado. Tu cuenta anterior sigue conectada.",
       );
     }
 
@@ -47,11 +50,11 @@ function Topbar() {
 
       if (spotifyError === "user_not_registered") {
         setAccountMessage(
-          "Esta cuenta todavía no está autorizada para usar la aplicación. Agrégala en Users and Access dentro de Spotify Developers."
+          "Esta cuenta todavía no está autorizada para usar la aplicación. Agrégala en Users and Access dentro de Spotify Developers.",
         );
       } else {
         setAccountMessage(
-          "No se pudo completar la conexión con Spotify. Intenta nuevamente."
+          "No se pudo completar la conexión con Spotify. Intenta nuevamente.",
         );
       }
     }
@@ -70,7 +73,7 @@ function Topbar() {
         window.history.replaceState(
           {},
           document.title,
-          window.location.pathname
+          window.location.pathname,
         );
         window.location.reload();
         return;
@@ -96,12 +99,116 @@ function Topbar() {
       spotifyAuthFailed ||
       params.get("sync")
     ) {
-      window.history.replaceState(
-        {},
-        document.title,
-        window.location.pathname
-      );
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+    let pollTimeoutId: number | undefined;
+    let requestInFlight = false;
+
+    const scheduleNextCheck = (delay = 3000) => {
+      if (isCancelled) {
+        return;
+      }
+
+      if (pollTimeoutId) {
+        window.clearTimeout(pollTimeoutId);
+      }
+
+      pollTimeoutId = window.setTimeout(() => {
+        void checkSyncStatus();
+      }, delay);
+    };
+
+    const checkSyncStatus = async () => {
+      if (isCancelled || requestInFlight) {
+        return;
+      }
+
+      const sessionToken = localStorage.getItem("session_token");
+
+      if (!sessionToken) {
+        setIsSyncing(false);
+        return;
+      }
+
+      requestInFlight = true;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/sync-status`, {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+
+        if (response.status === 401) {
+          if (!isCancelled) {
+            setIsSyncing(false);
+          }
+          return;
+        }
+
+        if (!response.ok) {
+          if (
+            !isCancelled &&
+            localStorage.getItem("analysis_update_started") === "true"
+          ) {
+            scheduleNextCheck(4000);
+          }
+          return;
+        }
+
+        const data = await response.json();
+        const syncing = data.status === "syncing";
+
+        if (!isCancelled) {
+          setIsSyncing(syncing);
+        }
+
+        if (syncing) {
+          scheduleNextCheck();
+        }
+      } catch (error) {
+        console.error("Error revisando sincronización desde Topbar:", error);
+
+        if (
+          !isCancelled &&
+          localStorage.getItem("analysis_update_started") === "true"
+        ) {
+          scheduleNextCheck(4000);
+        }
+      } finally {
+        requestInFlight = false;
+      }
+    };
+
+    const handleSyncStarted = () => {
+      if (isCancelled) {
+        return;
+      }
+
+      setIsSyncing(true);
+
+      if (pollTimeoutId) {
+        window.clearTimeout(pollTimeoutId);
+      }
+
+      void checkSyncStatus();
+    };
+
+    void checkSyncStatus();
+    window.addEventListener("spotify-sync-started", handleSyncStarted);
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener("spotify-sync-started", handleSyncStarted);
+
+      if (pollTimeoutId) {
+        window.clearTimeout(pollTimeoutId);
+      }
+    };
   }, []);
 
   const loadConnectedUser = async () => {
@@ -122,7 +229,7 @@ function Topbar() {
       if (response.status === 401) {
         setIsConnected(false);
         setAccountMessage(
-          "Tu sesión de la aplicación expiró. Conecta Spotify nuevamente."
+          "Tu sesión de la aplicación expiró. Conecta Spotify nuevamente.",
         );
         return;
       }
@@ -167,7 +274,7 @@ function Topbar() {
       if (response.status === 401) {
         localStorage.removeItem("analysis_update_started");
         setAccountMessage(
-          "Tu conexión con Spotify expiró. Autoriza tu cuenta nuevamente para actualizar."
+          "Tu conexión con Spotify expiró. Autoriza tu cuenta nuevamente para actualizar.",
         );
         connectSpotify();
         return;
@@ -176,17 +283,19 @@ function Topbar() {
       if (!response.ok) {
         localStorage.removeItem("analysis_update_started");
         setAccountMessage(
-          "No pudimos iniciar la actualización. Tus datos guardados siguen disponibles; intenta nuevamente."
+          "No pudimos iniciar la actualización. Tus datos guardados siguen disponibles; intenta nuevamente.",
         );
         return;
       }
 
+      setIsSyncing(true);
+      window.dispatchEvent(new Event("spotify-sync-started"));
       window.location.reload();
     } catch (error) {
       console.error("Error actualizando análisis:", error);
       localStorage.removeItem("analysis_update_started");
       setAccountMessage(
-        "No pudimos comunicarnos con el servidor. Tus datos guardados siguen disponibles."
+        "No pudimos comunicarnos con el servidor. Tus datos guardados siguen disponibles.",
       );
     } finally {
       setIsWorking(false);
@@ -198,7 +307,7 @@ function Topbar() {
     localStorage.removeItem("analysis_update_started");
 
     setAccountMessage(
-      'En Spotify, pulsa "¿No eres tú?" para iniciar sesión con otra cuenta.'
+      'En Spotify, pulsa "¿No eres tú?" para iniciar sesión con otra cuenta.',
     );
     setIsWorking(true);
     window.location.assign(SPOTIFY_CHANGE_ACCOUNT_URL);
@@ -229,8 +338,8 @@ function Topbar() {
         <h1>Tu centro de inteligencia musical</h1>
 
         <p className="topbar-description">
-          Analiza tus playlists, artistas, álbumes y patrones musicales desde
-          tu cuenta de Spotify.
+          Analiza tus playlists, artistas, álbumes y patrones musicales desde tu
+          cuenta de Spotify.
         </p>
 
         {isConnected && connectedUser && (
@@ -261,15 +370,17 @@ function Topbar() {
             type="button"
             className="connect-button"
             onClick={handleSpotifyAction}
-            disabled={isWorking}
+            disabled={isWorking || isSyncing}
           >
-            {isWorking
-              ? isConnected
-                ? "Iniciando actualización..."
-                : "Abriendo Spotify..."
-              : isConnected
-              ? "Actualizar desde Spotify"
-              : "Conectar Spotify"}
+            {isSyncing
+              ? "Actualizando desde Spotify..."
+              : isWorking
+                ? isConnected
+                  ? "Iniciando actualización..."
+                  : "Abriendo Spotify..."
+                : isConnected
+                  ? "Actualizar desde Spotify"
+                  : "Conectar Spotify"}
           </button>
 
           {isConnected && (
@@ -277,7 +388,7 @@ function Topbar() {
               type="button"
               className="secondary-button"
               onClick={changeAccount}
-              disabled={isWorking}
+              disabled={isWorking || isSyncing}
             >
               Cambiar cuenta
             </button>
@@ -302,3 +413,4 @@ function Topbar() {
 }
 
 export default Topbar;
+

@@ -1265,3 +1265,11 @@ html {
   line-height: 1.45;
   text-align: center;
 }
+
+/* Estado visual mientras una conexión o sincronización está en curso. */
+.connect-button:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+  filter: saturate(0.7);
+  box-shadow: none;
+}
