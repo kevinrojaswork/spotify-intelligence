@@ -8,6 +8,37 @@ const SPOTIFY_AUTH_URL =
 const SPOTIFY_CHANGE_ACCOUNT_URL =
   "https://accounts.spotify.com/authorize?client_id=920f42a830964ed6bcb6cdd2205004bc&response_type=code&redirect_uri=https%3A%2F%2Fspotify-intelligence-production.up.railway.app%2Fauth%2Fcallback&scope=playlist-read-private+playlist-read-collaborative+user-library-read+user-read-email+user-top-read+user-read-private&show_dialog=true";
 
+const SYNC_CHANNEL_NAME = "spotify-intelligence-sync";
+const SYNC_EVENT_STORAGE_KEY = "spotify_sync_event";
+
+type SyncTabMessage = {
+  type: "sync-started" | "sync-finished";
+  spotifyUserId: string | null;
+  sentAt: number;
+};
+
+function createSyncTabMessage(
+  type: SyncTabMessage["type"],
+): SyncTabMessage {
+  return {
+    type,
+    spotifyUserId: localStorage.getItem("spotify_user_id"),
+    sentAt: Date.now(),
+  };
+}
+
+function notifyOtherTabs(message: SyncTabMessage) {
+  // El timestamp hace que cada escritura sea distinta y dispare el evento
+  // "storage" incluso cuando se repite el mismo tipo de mensaje.
+  localStorage.setItem(SYNC_EVENT_STORAGE_KEY, JSON.stringify(message));
+
+  if ("BroadcastChannel" in window) {
+    const channel = new BroadcastChannel(SYNC_CHANNEL_NAME);
+    channel.postMessage(message);
+    channel.close();
+  }
+}
+
 type ConnectedUser = {
   spotify_user_id: string;
   display_name: string | null;
@@ -107,6 +138,7 @@ function Topbar() {
     let isCancelled = false;
     let pollTimeoutId: number | undefined;
     let requestInFlight = false;
+    let syncChannel: BroadcastChannel | null = null;
 
     const scheduleNextCheck = (delay = 3000) => {
       if (isCancelled) {
@@ -122,6 +154,21 @@ function Topbar() {
       }, delay);
     };
 
+    const finishLocalSyncState = (notifyTabs: boolean) => {
+      const hadActiveFlag =
+        localStorage.getItem("analysis_update_started") === "true";
+
+      localStorage.removeItem("analysis_update_started");
+
+      if (!isCancelled) {
+        setIsSyncing(false);
+      }
+
+      if (notifyTabs && hadActiveFlag) {
+        notifyOtherTabs(createSyncTabMessage("sync-finished"));
+      }
+    };
+
     const checkSyncStatus = async () => {
       if (isCancelled || requestInFlight) {
         return;
@@ -130,7 +177,7 @@ function Topbar() {
       const sessionToken = localStorage.getItem("session_token");
 
       if (!sessionToken) {
-        setIsSyncing(false);
+        finishLocalSyncState(false);
         return;
       }
 
@@ -144,9 +191,7 @@ function Topbar() {
         });
 
         if (response.status === 401) {
-          if (!isCancelled) {
-            setIsSyncing(false);
-          }
+          finishLocalSyncState(true);
           return;
         }
 
@@ -163,13 +208,18 @@ function Topbar() {
         const data = await response.json();
         const syncing = data.status === "syncing";
 
-        if (!isCancelled) {
-          setIsSyncing(syncing);
+        if (syncing) {
+          localStorage.setItem("analysis_update_started", "true");
+
+          if (!isCancelled) {
+            setIsSyncing(true);
+          }
+
+          scheduleNextCheck();
+          return;
         }
 
-        if (syncing) {
-          scheduleNextCheck();
-        }
+        finishLocalSyncState(true);
       } catch (error) {
         console.error("Error revisando sincronización desde Topbar:", error);
 
@@ -184,29 +234,102 @@ function Topbar() {
       }
     };
 
-    const handleSyncStarted = () => {
-      if (isCancelled) {
+    const belongsToCurrentAccount = (message: SyncTabMessage) => {
+      const currentUserId = localStorage.getItem("spotify_user_id");
+
+      return (
+        !message.spotifyUserId ||
+        !currentUserId ||
+        message.spotifyUserId === currentUserId
+      );
+    };
+
+    const applyTabMessage = (message: SyncTabMessage) => {
+      if (isCancelled || !belongsToCurrentAccount(message)) {
         return;
       }
 
-      setIsSyncing(true);
+      if (message.type === "sync-started") {
+        localStorage.setItem("analysis_update_started", "true");
+        setIsSyncing(true);
 
-      if (pollTimeoutId) {
-        window.clearTimeout(pollTimeoutId);
+        if (pollTimeoutId) {
+          window.clearTimeout(pollTimeoutId);
+        }
+
+        void checkSyncStatus();
+        return;
       }
 
+      finishLocalSyncState(false);
+    };
+
+    const handleSyncStarted = () => {
+      applyTabMessage(createSyncTabMessage("sync-started"));
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "analysis_update_started") {
+        const syncing = event.newValue === "true";
+        setIsSyncing(syncing);
+
+        if (syncing) {
+          void checkSyncStatus();
+        }
+        return;
+      }
+
+      if (event.key !== SYNC_EVENT_STORAGE_KEY || !event.newValue) {
+        return;
+      }
+
+      try {
+        applyTabMessage(JSON.parse(event.newValue) as SyncTabMessage);
+      } catch (error) {
+        console.error("Evento de sincronización inválido:", error);
+      }
+    };
+
+    const handleChannelMessage = (event: MessageEvent<SyncTabMessage>) => {
+      applyTabMessage(event.data);
+    };
+
+    const handleWindowFocus = () => {
       void checkSyncStatus();
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void checkSyncStatus();
+      }
+    };
+
+    if ("BroadcastChannel" in window) {
+      syncChannel = new BroadcastChannel(SYNC_CHANNEL_NAME);
+      syncChannel.addEventListener("message", handleChannelMessage);
+    }
+
     void checkSyncStatus();
+
     window.addEventListener("spotify-sync-started", handleSyncStarted);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       isCancelled = true;
       window.removeEventListener("spotify-sync-started", handleSyncStarted);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
 
       if (pollTimeoutId) {
         window.clearTimeout(pollTimeoutId);
+      }
+
+      if (syncChannel) {
+        syncChannel.removeEventListener("message", handleChannelMessage);
+        syncChannel.close();
       }
     };
   }, []);
@@ -262,7 +385,6 @@ function Topbar() {
     try {
       setAccountMessage(null);
       setIsWorking(true);
-      localStorage.setItem("analysis_update_started", "true");
 
       const response = await fetch(`${API_BASE_URL}/load`, {
         method: "POST",
@@ -281,19 +403,31 @@ function Topbar() {
       }
 
       if (!response.ok) {
-        localStorage.removeItem("analysis_update_started");
         setAccountMessage(
           "No pudimos iniciar la actualización. Tus datos guardados siguen disponibles; intenta nuevamente.",
         );
         return;
       }
 
+      const data = await response.json();
+
+      if (data.status !== "syncing") {
+        setAccountMessage(
+          "El servidor no confirmó el inicio de la actualización. Intenta nuevamente.",
+        );
+        return;
+      }
+
+      localStorage.setItem("analysis_update_started", "true");
       setIsSyncing(true);
+
+      const syncMessage = createSyncTabMessage("sync-started");
+      notifyOtherTabs(syncMessage);
       window.dispatchEvent(new Event("spotify-sync-started"));
+
       window.location.reload();
     } catch (error) {
       console.error("Error actualizando análisis:", error);
-      localStorage.removeItem("analysis_update_started");
       setAccountMessage(
         "No pudimos comunicarnos con el servidor. Tus datos guardados siguen disponibles.",
       );
@@ -413,4 +547,3 @@ function Topbar() {
 }
 
 export default Topbar;
-
