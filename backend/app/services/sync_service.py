@@ -1,4 +1,5 @@
 import logging
+import os
 
 from app.database.db import mark_sync_failed, touch_sync_heartbeat
 from app.engine.music_engine import engine
@@ -7,10 +8,25 @@ from app.services.spotify_service import get_spotify_client
 logger = logging.getLogger(__name__)
 
 
+def is_controlled_failure_enabled() -> bool:
+    """Interruptor temporal para probar fallos sin modificar los datos guardados."""
+    return os.getenv("SYNC_TEST_FORCE_FAILURE", "false").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 def run_spotify_sync(spotify_user_id: str):
     """Ejecuta una sincronización ya reservada por el bloqueo atómico."""
     try:
         touch_sync_heartbeat(spotify_user_id)
+
+        if is_controlled_failure_enabled():
+            raise RuntimeError(
+                "Fallo controlado de sincronización activado para pruebas."
+            )
 
         sp = get_spotify_client(spotify_user_id)
 
