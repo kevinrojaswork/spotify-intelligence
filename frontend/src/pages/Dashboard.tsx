@@ -960,7 +960,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 
   if (isLoading) {
     return (
-      <div className="dashboard">
+      <div id="dashboard-overview" className="dashboard">
         <section className="discovery-card loading-card">
           <p className="section-label">Cargando...</p>
           <h2>Preparando tu análisis musical...</h2>
@@ -973,7 +973,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 
   if (error && (!stats || stats.total_tracks === 0)) {
   return (
-    <div className="dashboard">
+    <div id="dashboard-overview" className="dashboard">
       <section className="discovery-card dashboard-error-card">
         <p className="section-label">Acción necesaria</p>
 
@@ -1006,7 +1006,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 
   if (syncStatus === "syncing" && (!stats || stats.total_tracks === 0)) {
     return (
-      <div className="dashboard">
+      <div id="dashboard-overview" className="dashboard">
         <section className="discovery-card loading-card">
           <p className="section-label">Sincronizando Spotify</p>
           <h2>Estamos preparando tu análisis musical...</h2>
@@ -1022,7 +1022,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 
   if (!stats || (!isPlaylistMode && stats.total_tracks === 0)) {
     return (
-      <div className="dashboard">
+      <div id="dashboard-overview" className="dashboard">
         <section className="discovery-card">
           <p className="section-label">Análisis no disponible</p>
 <h2>Todavía no hay datos musicales guardados.</h2>
@@ -1037,7 +1037,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 
   if (isEmptyPlaylist) {
     return (
-      <div className="dashboard">
+      <div id="dashboard-overview" className="dashboard">
         <section className="analysis-scope-card">
           <div>
             <p className="section-label">Modo playlist</p>
@@ -1203,7 +1203,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 
 
   return (
-    <div className="dashboard">
+    <div id="dashboard-overview" className="dashboard">
       <div
         className={`dashboard-overview-grid ${
           syncStatus === "syncing" ? "dashboard-overview-grid-single" : ""
@@ -1444,6 +1444,9 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
   <a href="#dashboard-summary">Resumen</a>
   <a href="#musical-dna">ADN Musical</a>
 
+  {!isPlaylistMode && (
+    <a href="#smart-insights">Insights inteligentes</a>
+  )}
 
 {!isPlaylistMode && <a href="#top-playlists">Top playlists</a>}
 
@@ -1540,7 +1543,11 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
   <MusicalDNACard dna={stats.musical_dna} />
 </div>
 
-      {!isPlaylistMode && <SmartInsightsCard insights={stats.smart_insights} />}
+      {!isPlaylistMode && (
+        <div id="smart-insights">
+          <SmartInsightsCard insights={stats.smart_insights} />
+        </div>
+      )}
 
       <DominantArtistCard
         artist={stats.dominant_artist}
@@ -1652,5 +1659,4 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 }
 
 export default Dashboard;
-
 
