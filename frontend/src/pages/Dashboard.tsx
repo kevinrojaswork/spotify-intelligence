@@ -985,7 +985,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 
         <p>
           {isOnline
-            ? "Intenta cargar nuevamente tus datos guardados. Solo necesitas actualizar desde Spotify si el problema continúa."
+            ? "Intenta cargar nuevamente tus datos guardados. Solo necesitas sincronizar cambios de Spotify si el problema continúa."
             : "Comprueba tu conexión. Cuando vuelvas a tener internet, presiona Reintentar carga."}
         </p>
 
@@ -1027,7 +1027,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           <p className="section-label">Análisis no disponible</p>
 <h2>Todavía no hay datos musicales guardados.</h2>
 <p>
-  Usa <strong>Actualizar desde Spotify</strong> para volver a iniciar la
+  Usa <strong>Sincronizar cambios de Spotify</strong> para volver a iniciar la
   sincronización. Después, tus datos se cargarán automáticamente.
 </p>
         </section>
@@ -1052,6 +1052,10 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
             <span className="playlist-count-label">
               0 canciones en esta playlist
             </span>
+
+            <p className="scope-change-hint">
+              Puedes elegir otra playlist sin sincronizar nuevamente con Spotify.
+            </p>
           </div>
 
           <div className="scope-actions">
@@ -1064,7 +1068,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
             >
               {isPlaylistSelectorOpen
                 ? "Ocultar selector"
-                : "Cambiar playlist"}
+                : "Elegir otra playlist"}
             </button>
 
             <button
@@ -1189,7 +1193,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           <p>
             Esta playlist seguirá disponible en tu biblioteca. Agrega canciones
             desde Spotify y luego presiona{" "}
-            <strong>Actualizar desde Spotify</strong> para analizarla.
+            <strong>Sincronizar cambios de Spotify</strong> para analizarla.
           </p>
         </section>
       </div>
@@ -1200,7 +1204,12 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 
   return (
     <div className="dashboard">
-      <section className="analysis-scope-card">
+      <div
+        className={`dashboard-overview-grid ${
+          syncStatus === "syncing" ? "dashboard-overview-grid-single" : ""
+        }`}
+      >
+        <section className="analysis-scope-card">
         <div>
           <p className="section-label">
             {isPlaylistMode ? "Modo playlist" : "Modo biblioteca"}
@@ -1217,6 +1226,11 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           <span className="playlist-count-label">
             {availablePlaylistCount} playlists encontradas en Spotify
           </span>
+
+          <p className="scope-change-hint">
+            Cambiar de playlist usa los datos guardados y no requiere una nueva
+            sincronización.
+          </p>
 
             {!isPlaylistMode && playlists.length > 0 && (
               <div className="playlist-library-breakdown">
@@ -1238,7 +1252,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
             className="secondary-button"
             onClick={() => setIsPlaylistSelectorOpen((isOpen) => !isOpen)}
           >
-            {isPlaylistSelectorOpen ? "Ocultar selector" : "Cambiar playlist"}
+            {isPlaylistSelectorOpen ? "Ocultar selector" : "Elegir otra playlist"}
           </button>
 
           {selectedPlaylistId && (
@@ -1356,6 +1370,25 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       </section>
 
 
+        {syncStatus !== "syncing" && (
+          <section className="discovery-card cached-data-card cached-data-card-compact">
+            <div>
+              <p className="section-label">Datos guardados</p>
+              <h2>Análisis listo para consultar</h2>
+              <p className="cached-data-explanation">
+                Cambiar de playlist es inmediato porque usa este análisis guardado.
+              </p>
+            </div>
+
+            <div className="cached-data-meta">
+              <span>Última sincronización</span>
+              <strong>{formatLastSync(stats.last_sync)}</strong>
+            </div>
+          </section>
+        )}
+      </div>
+
+
       {!isOnline && (
   <section className="discovery-card offline-warning-card">
     <p className="section-label">Sin conexión</p>
@@ -1363,25 +1396,13 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     <h2>Estás viendo los datos que ya estaban cargados.</h2>
 
     <p>
-      Algunas funciones, como cambiar de playlist o actualizar desde Spotify,
+      Algunas funciones, como cambiar de playlist o sincronizar cambios con Spotify,
       estarán disponibles cuando regrese tu conexión.
     </p>
   </section>
 )}
 
-{syncStatus !== "syncing" && (
-  <section className="discovery-card cached-data-card cached-data-card-compact">
-    <div>
-      <p className="section-label">Datos guardados</p>
-      <h2>Análisis listo para consultar</h2>
-    </div>
 
-    <div className="cached-data-meta">
-      <span>Última sincronización</span>
-      <strong>{formatLastSync(stats.last_sync)}</strong>
-    </div>
-  </section>
-)}
 
 {needsReconnect && syncStatus !== "syncing" && (
     <section className="discovery-card reconnect-warning-card">
@@ -1631,4 +1652,5 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 }
 
 export default Dashboard;
+
 

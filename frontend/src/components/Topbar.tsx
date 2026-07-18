@@ -464,7 +464,7 @@ function Topbar() {
 
   return (
     <header className="topbar">
-      <div>
+      <div className="topbar-intro">
         <p className="topbar-label">
           {isConnected ? "Spotify conectado" : "Conecta tu cuenta"}
         </p>
@@ -498,7 +498,24 @@ function Topbar() {
         )}
       </div>
 
-      <div className="dashboard-actions-block">
+      <aside className="dashboard-actions-block" aria-label="Sincronización con Spotify">
+        <div className="dashboard-actions-copy">
+          <p className="section-label">Datos de Spotify</p>
+          <h2>
+            {isConnected
+              ? "Importa los cambios recientes de tu cuenta"
+              : "Conecta Spotify para preparar tu análisis"}
+          </h2>
+
+          {isConnected && (
+            <p>
+              <strong>No necesitas sincronizar para cambiar de playlist.</strong>{" "}
+              Usa esta acción solamente después de modificar canciones o playlists
+              directamente en Spotify.
+            </p>
+          )}
+        </div>
+
         <div className="topbar-actions">
           <button
             type="button"
@@ -507,13 +524,13 @@ function Topbar() {
             disabled={isWorking || isSyncing}
           >
             {isSyncing
-              ? "Actualizando desde Spotify..."
+              ? "Sincronizando cambios..."
               : isWorking
                 ? isConnected
-                  ? "Iniciando actualización..."
+                  ? "Iniciando sincronización..."
                   : "Abriendo Spotify..."
                 : isConnected
-                  ? "Actualizar desde Spotify"
+                  ? "Sincronizar cambios de Spotify"
                   : "Conectar Spotify"}
           </button>
 
@@ -534,14 +551,7 @@ function Topbar() {
             {accountMessage}
           </p>
         )}
-
-        {isConnected && (
-          <p className="dashboard-actions-hint">
-            Tus datos guardados se cargan automáticamente. Usa este botón solo
-            cuando hayas cambiado canciones o playlists en Spotify.
-          </p>
-        )}
-      </div>
+      </aside>
     </header>
   );
 }
