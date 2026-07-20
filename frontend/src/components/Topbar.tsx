@@ -50,6 +50,7 @@ type ConnectedUser = {
 function Topbar() {
   const [isConnected, setIsConnected] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
+  const [isChangingAccount, setIsChangingAccount] = useState(false);
   const [isSyncing, setIsSyncing] = useState(
     () => localStorage.getItem("analysis_update_started") === "true",
   );
@@ -70,6 +71,7 @@ function Topbar() {
     if (spotifyCancelled) {
       localStorage.removeItem("spotify_account_change_pending");
       setIsWorking(false);
+      setIsChangingAccount(false);
       setAccountMessage(
         "Cambio de cuenta cancelado. Tu cuenta anterior sigue conectada.",
       );
@@ -78,6 +80,7 @@ function Topbar() {
     if (spotifyAuthFailed) {
       localStorage.removeItem("spotify_account_change_pending");
       setIsWorking(false);
+      setIsChangingAccount(false);
 
       if (spotifyError === "user_not_registered") {
         setAccountMessage(
@@ -97,6 +100,7 @@ function Topbar() {
       localStorage.setItem("spotify_user_id", spotifyUserIdFromUrl);
       localStorage.setItem("session_token", sessionTokenFromUrl);
       localStorage.removeItem("spotify_account_change_pending");
+      setIsChangingAccount(false);
       localStorage.removeItem("selected_playlist_id");
       localStorage.setItem("analysis_update_started", "true");
 
@@ -132,6 +136,62 @@ function Topbar() {
     ) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+  }, []);
+
+  useEffect(() => {
+    const resetAbandonedAccountChange = () => {
+      const accountChangePending =
+        localStorage.getItem("spotify_account_change_pending") === "true";
+
+      if (!accountChangePending) {
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const hasSpotifyResult =
+        params.get("spotify_connected") === "true" ||
+        params.get("spotify_cancelled") === "true" ||
+        params.get("spotify_auth_failed") === "true" ||
+        Boolean(params.get("spotify_user_id")) ||
+        Boolean(params.get("session_token"));
+
+      if (hasSpotifyResult) {
+        return;
+      }
+
+      localStorage.removeItem("spotify_account_change_pending");
+      setIsChangingAccount(false);
+      setIsWorking(false);
+      setAccountMessage(
+        "Cambio de cuenta cancelado. Tu cuenta actual sigue conectada.",
+      );
+    };
+
+    const handlePageShow = () => {
+      resetAbandonedAccountChange();
+    };
+
+    const handleWindowFocus = () => {
+      resetAbandonedAccountChange();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        resetAbandonedAccountChange();
+      }
+    };
+
+    resetAbandonedAccountChange();
+
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -443,7 +503,7 @@ function Topbar() {
     setAccountMessage(
       'En Spotify, pulsa "¿No eres tú?" para iniciar sesión con otra cuenta.',
     );
-    setIsWorking(true);
+    setIsChangingAccount(true);
     window.location.assign(SPOTIFY_CHANGE_ACCOUNT_URL);
   };
 
@@ -522,7 +582,7 @@ function Topbar() {
             type="button"
             className="connect-button"
             onClick={handleSpotifyAction}
-            disabled={isWorking || isSyncing}
+            disabled={isWorking || isSyncing || isChangingAccount}
           >
             {isSyncing
               ? "Sincronizando cambios..."
@@ -540,9 +600,9 @@ function Topbar() {
               type="button"
               className="secondary-button"
               onClick={changeAccount}
-              disabled={isWorking || isSyncing}
+              disabled={isWorking || isSyncing || isChangingAccount}
             >
-              Cambiar cuenta
+              {isChangingAccount ? "Abriendo Spotify..." : "Cambiar cuenta"}
             </button>
           )}
         </div>
@@ -558,3 +618,4 @@ function Topbar() {
 }
 
 export default Topbar;
+
