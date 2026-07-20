@@ -878,7 +878,7 @@ const hasVisiblePlaylistResults =
 
   const currentScopeLabel = selectedPlaylist
     ? selectedPlaylist.name
-    : "Toda mi biblioteca";
+    : "Todas mis playlists";
 
     const availablePlaylistCount =
   playlists.length > 0 ? playlists.length : stats?.total_playlists ?? 0;
@@ -889,7 +889,7 @@ const hasVisiblePlaylistResults =
   isPlaylistMode && stats !== null && stats.total_tracks === 0;
 
   const playlistDiscovery = stats?.dominant_artist
-    ? `${stats.dominant_artist.name} domina esta playlist: aparece ${stats.dominant_artist.count} veces, equivalente al ${stats.dominant_artist_percentage}% de las canciones analizadas.`
+    ? `${stats.dominant_artist.name} es el artista que más aparece en esta playlist: tiene ${stats.dominant_artist.count} apariciones, equivalentes al ${stats.dominant_artist_percentage}% de sus canciones.`
     : "Esta playlist ya fue analizada correctamente.";
 
   const repeatedSongsInPlaylist = stats
@@ -963,7 +963,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       <div id="dashboard-overview" className="dashboard">
         <section className="discovery-card loading-card">
           <p className="section-label">Cargando...</p>
-          <h2>Preparando tu análisis musical...</h2>
+          <h2>Preparando el análisis de tus playlists...</h2>
           <p>Estamos revisando tu conexión con Spotify.</p>
           <div className="loading-pulse" />
         </section>
@@ -1009,7 +1009,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       <div id="dashboard-overview" className="dashboard">
         <section className="discovery-card loading-card">
           <p className="section-label">Sincronizando Spotify</p>
-          <h2>Estamos preparando tu análisis musical...</h2>
+          <h2>Estamos preparando el análisis de tus playlists...</h2>
           <p>
             La primera sincronización puede tardar un poco si tienes muchas
             playlists. Cuando termine, el dashboard se actualizará solo.
@@ -1076,7 +1076,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
               className="scope-reset-button"
               onClick={handleReturnToLibrary}
             >
-              Ver toda mi biblioteca
+              Analizar todas mis playlists
             </button>
 
             {isPlaylistSelectorOpen && (
@@ -1146,7 +1146,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     onChange={handlePlaylistChange}
     disabled={isChangingScope}
   >
-    <option value="">Toda mi biblioteca</option>
+    <option value="">Todas mis playlists</option>
 
     {visiblePlaylistsWithSongs.length > 0 && (
   <optgroup
@@ -1191,7 +1191,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           <h2>{currentScopeLabel} todavía no tiene canciones.</h2>
 
           <p>
-            Esta playlist seguirá disponible en tu biblioteca. Agrega canciones
+            Esta playlist seguirá disponible entre tus playlists. Agrega canciones
             desde Spotify y luego presiona{" "}
             <strong>Sincronizar cambios de Spotify</strong> para analizarla.
           </p>
@@ -1212,7 +1212,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
         <section className="analysis-scope-card">
         <div>
           <p className="section-label">
-            {isPlaylistMode ? "Modo playlist" : "Modo biblioteca"}
+            {isPlaylistMode ? "Playlist individual" : "Análisis general"}
           </p>
 
           <h2>Analizando: {currentScopeLabel}</h2>
@@ -1220,11 +1220,11 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           <p>
             {isPlaylistMode
               ? "Estás viendo un análisis calculado solo con las canciones de esta playlist."
-              : "Estás viendo un análisis general de todas tus playlists guardadas."}
+              : "Combinamos las canciones guardadas en todas tus playlists de Spotify para mostrar patrones generales."}
           </p>
 
           <span className="playlist-count-label">
-            {availablePlaylistCount} playlists encontradas en Spotify
+            {availablePlaylistCount} playlists incluidas en este análisis
           </span>
 
           <p className="scope-change-hint">
@@ -1261,7 +1261,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
               className="scope-reset-button"
               onClick={handleReturnToLibrary}
             >
-              Ver toda mi biblioteca
+              Analizar todas mis playlists
             </button>
           )}
 
@@ -1329,7 +1329,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
   onChange={handlePlaylistChange}
   disabled={isChangingScope}
 >
-  <option value="">Toda mi biblioteca</option>
+  <option value="">Todas mis playlists</option>
 
   {visiblePlaylistsWithSongs.length > 0 && (
   <optgroup
@@ -1460,7 +1460,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       {showUpdateSuccess && syncStatus === "completed" && (
   <section className="discovery-card sync-result-card">
     <p className="section-label">Análisis actualizado</p>
-    <h2>Tu análisis musical se actualizó correctamente.</h2>
+    <h2>El análisis de tus playlists se actualizó correctamente.</h2>
     <p>
       Los datos que ves abajo ya corresponden a la última sincronización.
     </p>
@@ -1491,8 +1491,9 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           <p className="section-label">Resumen de esta playlist</p>
           <h2>{playlistDiscovery}</h2>
           <p>
-            Este análisis no usa toda tu biblioteca, solo las canciones guardadas
-            dentro de <strong>{currentScopeLabel}</strong>.
+            Este análisis usa únicamente las canciones guardadas dentro de{" "}
+            <strong>{currentScopeLabel}</strong>. No representa tu historial de
+            reproducción.
           </p>
         </section>
       ) : (
@@ -1552,6 +1553,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       <DominantArtistCard
         artist={stats.dominant_artist}
         percentage={stats.dominant_artist_percentage}
+        isPlaylistMode={isPlaylistMode}
       />
 
       {!isPlaylistMode && (
@@ -1580,8 +1582,8 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     label="Top artistas"
     title={
       isPlaylistMode
-        ? "Artistas más presentes en esta playlist"
-        : "Tus artistas más presentes"
+        ? "Artistas que más aparecen en esta playlist"
+        : "Artistas que más aparecen en tus playlists"
     }
     items={getVisibleTopItems(stats.top_artists, "top-artists")}
     unit="canciones"
@@ -1619,7 +1621,7 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     <>
       <TopListCard
         label="Top canciones"
-        title="Tus canciones más repetidas"
+        title="Canciones que más se repiten entre tus playlists"
         items={getVisibleTopItems(stats.top_songs, "top-songs")}
         unit="veces"
       />
@@ -1634,8 +1636,8 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     label="Top álbumes"
     title={
       isPlaylistMode
-        ? "Álbumes más presentes en esta playlist"
-        : "Tus álbumes más presentes"
+        ? "Álbumes con más canciones en esta playlist"
+        : "Álbumes con más canciones guardadas en tus playlists"
     }
     items={getVisibleTopItems(stats.top_albums, "top-albums")}
     unit="canciones"

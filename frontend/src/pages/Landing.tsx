@@ -85,8 +85,9 @@ function Landing() {
         <h1>Spotify Intelligence</h1>
 
         <p className="landing-subtitle">
-          Descubre patrones ocultos, analiza tus playlists y comprende mejor
-          tu historia musical.
+          Descubre patrones en las canciones guardadas en tus playlists de
+          Spotify. Identifica qué artistas, álbumes y canciones aparecen con
+          mayor frecuencia, sin confundirlos con tu historial de reproducción.
         </p>
 
         <button
@@ -101,8 +102,8 @@ function Landing() {
         </button>
 
         <p className="landing-privacy-note">
-          La aplicación solicita acceso de lectura. No modifica ni elimina
-          tus playlists.
+          La aplicación solicita acceso de lectura. No modifica ni elimina tus
+          playlists, y los resultados se calculan con las canciones que contienen.
         </p>
 
         {message && (
@@ -121,13 +122,13 @@ function Landing() {
           <article>
             <span>2</span>
             <strong>Espera la preparación</strong>
-            <p>Sincronizamos tus playlists y canciones en segundo plano.</p>
+            <p>Sincronizamos tus playlists y las canciones que contienen.</p>
           </article>
 
           <article>
             <span>3</span>
             <strong>Explora tu análisis</strong>
-            <p>Consulta artistas, canciones, álbumes y patrones musicales.</p>
+            <p>Consulta qué artistas, canciones y álbumes aparecen más en tus playlists.</p>
           </article>
         </div>
       </section>

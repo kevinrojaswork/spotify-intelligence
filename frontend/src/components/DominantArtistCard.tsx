@@ -6,18 +6,29 @@ type DominantArtist = {
 type Props = {
   artist: DominantArtist | null;
   percentage: number;
+  isPlaylistMode?: boolean;
 };
 
-function DominantArtistCard({ artist, percentage }: Props) {
+function DominantArtistCard({
+  artist,
+  percentage,
+  isPlaylistMode = false,
+}: Props) {
   return (
     <section className="discovery-card">
-      <p className="section-label">Artista dominante</p>
-      <h2>{artist ? artist.name : "Todavía no hay artista dominante"}</h2>
+      <p className="section-label">Artista con mayor presencia</p>
+      <h2>
+        {artist
+          ? artist.name
+          : "Todavía no hay suficientes canciones para destacar un artista"}
+      </h2>
 
       {artist && (
         <p>
-          Aparece {artist.count} veces, equivalente al {percentage}% de tus
-          canciones analizadas.
+          Es el artista que más aparece{" "}
+          {isPlaylistMode ? "en esta playlist" : "en tus playlists"}: tiene{" "}
+          {artist.count} apariciones, equivalentes al {percentage}% de las
+          canciones incluidas en este análisis.
         </p>
       )}
     </section>

@@ -469,11 +469,12 @@ function Topbar() {
           {isConnected ? "Spotify conectado" : "Conecta tu cuenta"}
         </p>
 
-        <h1>Tu centro de inteligencia musical</h1>
+        <h1>Tu centro de inteligencia para playlists</h1>
 
         <p className="topbar-description">
-          Analiza tus playlists, artistas, álbumes y patrones musicales desde tu
-          cuenta de Spotify.
+          Analiza las canciones guardadas en tus playlists de Spotify y descubre
+          qué artistas, álbumes y canciones aparecen con mayor frecuencia. Estos
+          resultados no representan tu historial de reproducción.
         </p>
 
         {isConnected && connectedUser && (
@@ -503,8 +504,8 @@ function Topbar() {
           <p className="section-label">Datos de Spotify</p>
           <h2>
             {isConnected
-              ? "Importa los cambios recientes de tu cuenta"
-              : "Conecta Spotify para preparar tu análisis"}
+              ? "Importa los cambios recientes de tus playlists"
+              : "Conecta Spotify para analizar tus playlists"}
           </h2>
 
           {isConnected && (

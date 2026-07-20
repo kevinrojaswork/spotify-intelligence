@@ -14,7 +14,7 @@ function StatsGrid({
   const stats = [
     {
       icon: "🎵",
-      label: "Canciones",
+      label: "Canciones guardadas",
       value: totalTracks,
     },
     {
@@ -29,7 +29,7 @@ function StatsGrid({
     },
     {
       icon: "📁",
-      label: "Playlists totales",
+      label: "Playlists incluidas",
       value: totalPlaylists,
     },
   ];
