@@ -1224,7 +1224,15 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
           </p>
 
           <span className="playlist-count-label">
-            {availablePlaylistCount} playlists incluidas en este análisis
+            {isPlaylistMode
+              ? `${stats.total_tracks} ${
+                  stats.total_tracks === 1 ? "canción incluida" : "canciones incluidas"
+                } en este análisis`
+              : `${availablePlaylistCount} ${
+                  availablePlaylistCount === 1
+                    ? "playlist incluida"
+                    : "playlists incluidas"
+                } en este análisis`}
           </span>
 
           <p className="scope-change-hint">
