@@ -523,22 +523,22 @@ function Topbar() {
   const accountInitial = accountName.charAt(0).toUpperCase();
 
   return (
-    <header className="topbar">
+    <header className="topbar topbar-compact">
       <div className="topbar-intro">
         <p className="topbar-label">
-          {isConnected ? "Spotify conectado" : "Conecta tu cuenta"}
+          {isConnected ? "Panel conectado a Spotify" : "Conecta tu cuenta"}
         </p>
 
-        <h1>Tu centro de inteligencia para playlists</h1>
+        <h1>Inteligencia para tus playlists</h1>
 
         <p className="topbar-description">
-          Analiza las canciones guardadas en tus playlists de Spotify y descubre
-          qué artistas, álbumes y canciones aparecen con mayor frecuencia. Estos
-          resultados no representan tu historial de reproducción.
+          Descubre qué contienen tus playlists, cómo se relacionan y qué patrones
+          se repiten. Los resultados se basan en canciones guardadas, no en tu
+          historial de reproducción.
         </p>
 
         {isConnected && connectedUser && (
-          <div className="connected-account">
+          <div className="connected-account connected-account-compact">
             {connectedUser.image_url ? (
               <img
                 src={connectedUser.image_url}
@@ -559,20 +559,22 @@ function Topbar() {
         )}
       </div>
 
-      <aside className="dashboard-actions-block" aria-label="Sincronización con Spotify">
+      <aside
+        className="dashboard-actions-block dashboard-actions-block-compact"
+        aria-label="Sincronización con Spotify"
+      >
         <div className="dashboard-actions-copy">
-          <p className="section-label">Datos de Spotify</p>
+          <p className="section-label">Actualizar datos</p>
           <h2>
             {isConnected
-              ? "Importa los cambios recientes de tus playlists"
+              ? "Sincroniza solo cuando cambies algo en Spotify"
               : "Conecta Spotify para analizar tus playlists"}
           </h2>
 
           {isConnected && (
             <p>
-              <strong>No necesitas sincronizar para cambiar de playlist.</strong>{" "}
-              Usa esta acción solamente después de modificar canciones o playlists
-              directamente en Spotify.
+              Cambiar de playlist utiliza el análisis guardado y no inicia una
+              nueva sincronización.
             </p>
           )}
         </div>

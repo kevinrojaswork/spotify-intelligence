@@ -1204,41 +1204,24 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
 
   return (
     <div id="dashboard-overview" className="dashboard">
-      <div
-        className={`dashboard-overview-grid ${
-          syncStatus === "syncing" ? "dashboard-overview-grid-single" : ""
-        }`}
-      >
-        <section className="analysis-scope-card">
-        <div>
-          <p className="section-label">
-            {isPlaylistMode ? "Playlist individual" : "Análisis general"}
-          </p>
+      <section className="analysis-scope-card analysis-scope-card-visual">
+        <div className="analysis-visual-summary">
+          <div className="analysis-visual-icon" aria-hidden="true">
+            {isPlaylistMode ? "🎧" : "📚"}
+          </div>
 
-          <h2>Analizando: {currentScopeLabel}</h2>
+          <div className="analysis-visual-copy">
+            <p className="section-label">
+              {isPlaylistMode ? "Playlist individual" : "Análisis general"}
+            </p>
 
-          <p>
-            {isPlaylistMode
-              ? "Estás viendo un análisis calculado solo con las canciones de esta playlist."
-              : "Combinamos las canciones guardadas en todas tus playlists de Spotify para mostrar patrones generales."}
-          </p>
+            <h2>{currentScopeLabel}</h2>
 
-          <span className="playlist-count-label">
-            {isPlaylistMode
-              ? `${stats.total_tracks} ${
-                  stats.total_tracks === 1 ? "canción incluida" : "canciones incluidas"
-                } en este análisis`
-              : `${availablePlaylistCount} ${
-                  availablePlaylistCount === 1
-                    ? "playlist incluida"
-                    : "playlists incluidas"
-                } en este análisis`}
-          </span>
-
-          <p className="scope-change-hint">
-            Cambiar de playlist usa los datos guardados y no requiere una nueva
-            sincronización.
-          </p>
+            <p className="analysis-visual-description">
+              {isPlaylistMode
+                ? "Resultados calculados únicamente con las canciones de esta playlist."
+                : "Una vista conjunta de las canciones guardadas en todas tus playlists de Spotify."}
+            </p>
 
             {!isPlaylistMode && playlists.length > 0 && (
               <div className="playlist-library-breakdown">
@@ -1251,151 +1234,148 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
                 </span>
               </div>
             )}
-              
-  </div>
+          </div>
+        </div>
 
-        <div className="scope-actions">
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => setIsPlaylistSelectorOpen((isOpen) => !isOpen)}
-          >
-            {isPlaylistSelectorOpen ? "Ocultar selector" : "Elegir otra playlist"}
-          </button>
+        <div className="analysis-visual-metrics" aria-label="Resumen del análisis actual">
+          <div className="analysis-visual-metric analysis-visual-metric-primary">
+            <span>{isPlaylistMode ? "Canciones" : "Playlists"}</span>
+            <strong>
+              {isPlaylistMode ? stats.total_tracks : availablePlaylistCount}
+            </strong>
+          </div>
 
-          {selectedPlaylistId && (
+          <div className="analysis-visual-metric">
+            <span>Última sincronización</span>
+            <strong>{formatLastSync(stats.last_sync)}</strong>
+          </div>
+        </div>
+
+        <div className="analysis-visual-footer">
+          <p className="analysis-quick-note">
+            <span aria-hidden="true">⚡</span> Cambiar de playlist usa los datos
+            guardados y es inmediato.
+          </p>
+
+          <div className="analysis-visual-actions">
             <button
               type="button"
-              className="scope-reset-button"
-              onClick={handleReturnToLibrary}
+              className="secondary-button"
+              onClick={() => setIsPlaylistSelectorOpen((isOpen) => !isOpen)}
             >
-              Analizar todas mis playlists
+              {isPlaylistSelectorOpen ? "Ocultar selector" : "Elegir otra playlist"}
             </button>
-          )}
 
-          {isPlaylistSelectorOpen && (
-            <div className="playlist-selector-wrapper">
-              <label htmlFor="playlist-selector">Seleccionar análisis</label>
-
-              <div className="playlist-search-field">
-                <input
-                  type="search"
-                  className="playlist-search-input"
-                  placeholder="Buscar playlist por nombre..."
-                  value={playlistSearch}
-                  onChange={(event) => setPlaylistSearch(event.target.value)}
-                  autoComplete="off"
-                />
-
-                {playlistSearch && (
-                  <button
-                    type="button"
-                    className="playlist-search-clear-button"
-                    onClick={() => setPlaylistSearch("")}
-                    aria-label="Limpiar búsqueda"
-                    title="Limpiar búsqueda"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-
-                <div className="playlist-filter-tabs">
-  <button
-    type="button"
-    className={playlistContentFilter === "all" ? "active" : ""}
-    onClick={() => setPlaylistContentFilter("all")}
-  >
-    Todas ({playlists.length})
-  </button>
-
-  <button
-    type="button"
-    className={
-      playlistContentFilter === "with-songs" ? "active" : ""
-    }
-    onClick={() => setPlaylistContentFilter("with-songs")}
-  >
-    Con canciones ({playlistsWithSongs.length})
-  </button>
-
-  <button
-    type="button"
-    className={playlistContentFilter === "empty" ? "active" : ""}
-    onClick={() => setPlaylistContentFilter("empty")}
-  >
-    Vacías ({emptyPlaylists.length})
-  </button>
-</div>
-
-
-              {renderPlaylistSearchResults()}
-
-              <select
-  id="playlist-selector"
-  value={selectedPlaylistId}
-  onChange={handlePlaylistChange}
-  disabled={isChangingScope}
->
-  <option value="">Todas mis playlists</option>
-
-  {visiblePlaylistsWithSongs.length > 0 && (
-  <optgroup
-    label={`Con canciones (${visiblePlaylistsWithSongs.length})`}
-  >
-    {visiblePlaylistsWithSongs.map((playlist) => (
-      <option
-        key={playlist.spotify_playlist_id}
-        value={playlist.spotify_playlist_id}
-      >
-        {playlist.name} — {playlist.total_tracks} canciones
-      </option>
-    ))}
-  </optgroup>
-)}
-
-{visibleEmptyPlaylists.length > 0 && (
-  <optgroup
-    label={`Vacías (${visibleEmptyPlaylists.length})`}
-  >
-    {visibleEmptyPlaylists.map((playlist) => (
-      <option
-        key={playlist.spotify_playlist_id}
-        value={playlist.spotify_playlist_id}
-      >
-        {playlist.name} — 0 canciones
-      </option>
-    ))}
-  </optgroup>
-)}
-
-</select>
-
-              {isChangingScope && <span>Cambiando análisis...</span>}
-            </div>
-          )}
+            {selectedPlaylistId && (
+              <button
+                type="button"
+                className="scope-reset-button"
+                onClick={handleReturnToLibrary}
+              >
+                Analizar todas mis playlists
+              </button>
+            )}
+          </div>
         </div>
-      </section>
 
+        {isPlaylistSelectorOpen && (
+          <div className="playlist-selector-wrapper analysis-visual-selector">
+            <label htmlFor="playlist-selector">Seleccionar análisis</label>
 
-        {syncStatus !== "syncing" && (
-          <section className="discovery-card cached-data-card cached-data-card-compact">
-            <div>
-              <p className="section-label">Datos guardados</p>
-              <h2>Análisis listo para consultar</h2>
-              <p className="cached-data-explanation">
-                Cambiar de playlist es inmediato porque usa este análisis guardado.
-              </p>
+            <div className="playlist-search-field">
+              <input
+                type="search"
+                className="playlist-search-input"
+                placeholder="Buscar playlist por nombre..."
+                value={playlistSearch}
+                onChange={(event) => setPlaylistSearch(event.target.value)}
+                autoComplete="off"
+              />
+
+              {playlistSearch && (
+                <button
+                  type="button"
+                  className="playlist-search-clear-button"
+                  onClick={() => setPlaylistSearch("")}
+                  aria-label="Limpiar búsqueda"
+                  title="Limpiar búsqueda"
+                >
+                  ×
+                </button>
+              )}
             </div>
 
-            <div className="cached-data-meta">
-              <span>Última sincronización</span>
-              <strong>{formatLastSync(stats.last_sync)}</strong>
+            <div className="playlist-filter-tabs">
+              <button
+                type="button"
+                className={playlistContentFilter === "all" ? "active" : ""}
+                onClick={() => setPlaylistContentFilter("all")}
+              >
+                Todas ({playlists.length})
+              </button>
+
+              <button
+                type="button"
+                className={
+                  playlistContentFilter === "with-songs" ? "active" : ""
+                }
+                onClick={() => setPlaylistContentFilter("with-songs")}
+              >
+                Con canciones ({playlistsWithSongs.length})
+              </button>
+
+              <button
+                type="button"
+                className={playlistContentFilter === "empty" ? "active" : ""}
+                onClick={() => setPlaylistContentFilter("empty")}
+              >
+                Vacías ({emptyPlaylists.length})
+              </button>
             </div>
-          </section>
+
+            {renderPlaylistSearchResults()}
+
+            <select
+              id="playlist-selector"
+              value={selectedPlaylistId}
+              onChange={handlePlaylistChange}
+              disabled={isChangingScope}
+            >
+              <option value="">Todas mis playlists</option>
+
+              {visiblePlaylistsWithSongs.length > 0 && (
+                <optgroup
+                  label={`Con canciones (${visiblePlaylistsWithSongs.length})`}
+                >
+                  {visiblePlaylistsWithSongs.map((playlist) => (
+                    <option
+                      key={playlist.spotify_playlist_id}
+                      value={playlist.spotify_playlist_id}
+                    >
+                      {playlist.name} — {playlist.total_tracks} canciones
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+
+              {visibleEmptyPlaylists.length > 0 && (
+                <optgroup label={`Vacías (${visibleEmptyPlaylists.length})`}>
+                  {visibleEmptyPlaylists.map((playlist) => (
+                    <option
+                      key={playlist.spotify_playlist_id}
+                      value={playlist.spotify_playlist_id}
+                    >
+                      {playlist.name} — 0 canciones
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+
+            {isChangingScope && <span>Cambiando análisis...</span>}
+          </div>
         )}
-      </div>
-
+      </section>
 
       {!isOnline && (
   <section className="discovery-card offline-warning-card">
