@@ -24,6 +24,7 @@ type SyncResult = {
 type TopItem = {
   name: string;
   count: number;
+  rank?: number;
 };
 
 
@@ -114,13 +115,21 @@ function Dashboard() {
   const [playlistContentFilter, setPlaylistContentFilter] =
   useState<PlaylistContentFilter>("all");
   const [expandedTopLists, setExpandedTopLists] = useState<
-  Record<TopListKey, boolean>
->({
-  "top-playlists": false,
-  "top-artists": false,
-  "top-songs": false,
-  "top-albums": false,
-});
+    Record<TopListKey, boolean>
+  >({
+    "top-playlists": false,
+    "top-artists": false,
+    "top-songs": false,
+    "top-albums": false,
+  });
+  const [topListSearches, setTopListSearches] = useState<
+    Record<TopListKey, string>
+  >({
+    "top-playlists": "",
+    "top-artists": "",
+    "top-songs": "",
+    "top-albums": "",
+  });
 
   const getSessionToken = () => {
     return localStorage.getItem("session_token");
@@ -596,6 +605,18 @@ useEffect(() => {
 
     setPlaylistSearch("");
     setPlaylistContentFilter("all");
+    setExpandedTopLists({
+      "top-playlists": false,
+      "top-artists": false,
+      "top-songs": false,
+      "top-albums": false,
+    });
+    setTopListSearches({
+      "top-playlists": "",
+      "top-artists": "",
+      "top-songs": "",
+      "top-albums": "",
+    });
 
     if (!sessionToken) {
       setError("No hay una sesión válida de Spotify.");
@@ -649,7 +670,18 @@ useEffect(() => {
     setSelectedPlaylistId("");
     setPlaylistSearch("");
     setPlaylistContentFilter("all");
-
+    setExpandedTopLists({
+      "top-playlists": false,
+      "top-artists": false,
+      "top-songs": false,
+      "top-albums": false,
+    });
+    setTopListSearches({
+      "top-playlists": "",
+      "top-artists": "",
+      "top-songs": "",
+      "top-albums": "",
+    });
 
     try {
       setIsChangingScope(true);
@@ -918,36 +950,100 @@ const hasVisiblePlaylistResults =
 
 
 
-const getVisibleTopItems = (items: TopItem[], key: TopListKey) => {
-  if (expandedTopLists[key]) {
-    return items;
-  }
+const getTopListSearchPlaceholder = (key: TopListKey) => {
+  const placeholders: Record<TopListKey, string> = {
+    "top-playlists": "Buscar una playlist en el ranking...",
+    "top-artists": "Buscar un artista en el ranking...",
+    "top-songs": "Buscar una canción en el ranking...",
+    "top-albums": "Buscar un álbum en el ranking...",
+  };
 
-  return items.slice(0, TOP_LIST_PREVIEW_LIMIT);
+  return placeholders[key];
 };
 
-const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
+const getFilteredTopItems = (items: TopItem[], key: TopListKey) => {
+  const rankedItems = items.map((item, index) => ({
+    ...item,
+    rank: index + 1,
+  }));
+
+  if (!expandedTopLists[key]) {
+    return rankedItems.slice(0, TOP_LIST_PREVIEW_LIMIT);
+  }
+
+  const normalizedSearch = topListSearches[key]
+    .trim()
+    .toLocaleLowerCase("es");
+
+  if (!normalizedSearch) {
+    return rankedItems;
+  }
+
+  return rankedItems.filter((item) =>
+    item.name.toLocaleLowerCase("es").includes(normalizedSearch)
+  );
+};
+
+const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
   if (items.length <= TOP_LIST_PREVIEW_LIMIT) {
     return null;
   }
 
   const isExpanded = expandedTopLists[key];
+  const filteredItems = getFilteredTopItems(items, key);
+  const normalizedSearch = topListSearches[key].trim();
+
+  const toggleExpanded = () => {
+    setExpandedTopLists((currentState) => ({
+      ...currentState,
+      [key]: !currentState[key],
+    }));
+
+    if (isExpanded) {
+      setTopListSearches((currentState) => ({
+        ...currentState,
+        [key]: "",
+      }));
+    }
+  };
 
   return (
-    <button
-      type="button"
-      className="show-more-list-button"
-      onClick={() =>
-        setExpandedTopLists((currentState) => ({
-          ...currentState,
-          [key]: !currentState[key],
-        }))
-      }
-    >
-      {isExpanded
-        ? "Ver menos"
-        : `Ver más (${items.length - TOP_LIST_PREVIEW_LIMIT} más)`}
-    </button>
+    <div className="top-list-explorer-controls">
+      {isExpanded && (
+        <div className="ranking-explorer">
+          <label className="ranking-search-field">
+            <span className="sr-only">Buscar dentro del ranking</span>
+            <input
+              type="search"
+              value={topListSearches[key]}
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                setTopListSearches((currentState) => ({
+                  ...currentState,
+                  [key]: event.target.value,
+                }))
+              }
+              placeholder={getTopListSearchPlaceholder(key)}
+            />
+          </label>
+
+          <p className="ranking-result-summary">
+            {normalizedSearch
+              ? `${filteredItems.length} de ${items.length} resultados`
+              : `${items.length} resultados disponibles`}
+          </p>
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="show-more-list-button"
+        onClick={toggleExpanded}
+      >
+        {isExpanded
+          ? "Ver menos"
+          : `Ver más (${items.length - TOP_LIST_PREVIEW_LIMIT} más)`}
+      </button>
+    </div>
   );
 };
 
@@ -1557,11 +1653,12 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
     <TopListCard
       label="Top playlists"
       title="Tus playlists más grandes"
-      items={getVisibleTopItems(stats.top_playlists, "top-playlists")}
+      items={getFilteredTopItems(stats.top_playlists, "top-playlists")}
       unit="canciones"
+      referenceMaxCount={stats.top_playlists[0]?.count}
     />
 
-    {renderTopListToggle(stats.top_playlists, "top-playlists")}
+    {renderTopListExplorer(stats.top_playlists, "top-playlists")}
   </div>
 )}
 
@@ -1573,11 +1670,12 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
         ? "Artistas que más aparecen en esta playlist"
         : "Artistas que más aparecen en tus playlists"
     }
-    items={getVisibleTopItems(stats.top_artists, "top-artists")}
+    items={getFilteredTopItems(stats.top_artists, "top-artists")}
     unit="canciones"
+    referenceMaxCount={stats.top_artists[0]?.count}
   />
 
-{renderTopListToggle(stats.top_artists, "top-artists")}
+{renderTopListExplorer(stats.top_artists, "top-artists")}
 
 
 </div>
@@ -1589,11 +1687,12 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
         <TopListCard
           label="Duplicadas"
           title="Canciones duplicadas en esta playlist"
-          items={getVisibleTopItems(repeatedSongsInPlaylist, "top-songs")}
+          items={getFilteredTopItems(repeatedSongsInPlaylist, "top-songs")}
           unit="veces"
+          referenceMaxCount={repeatedSongsInPlaylist[0]?.count}
         />
 
-        {renderTopListToggle(repeatedSongsInPlaylist, "top-songs")}
+        {renderTopListExplorer(repeatedSongsInPlaylist, "top-songs")}
       </>
     ) : (
       <section className="discovery-card">
@@ -1610,11 +1709,12 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
       <TopListCard
         label="Top canciones"
         title="Canciones que más se repiten entre tus playlists"
-        items={getVisibleTopItems(stats.top_songs, "top-songs")}
+        items={getFilteredTopItems(stats.top_songs, "top-songs")}
         unit="veces"
+        referenceMaxCount={stats.top_songs[0]?.count}
       />
 
-      {renderTopListToggle(stats.top_songs, "top-songs")}
+      {renderTopListExplorer(stats.top_songs, "top-songs")}
     </>
   )}
 </div>
@@ -1627,11 +1727,12 @@ const renderTopListToggle = (items: TopItem[], key: TopListKey) => {
         ? "Álbumes con más canciones en esta playlist"
         : "Álbumes con más canciones guardadas en tus playlists"
     }
-    items={getVisibleTopItems(stats.top_albums, "top-albums")}
+    items={getFilteredTopItems(stats.top_albums, "top-albums")}
     unit="canciones"
+    referenceMaxCount={stats.top_albums[0]?.count}
   />
 
-{renderTopListToggle(stats.top_albums, "top-albums")}
+{renderTopListExplorer(stats.top_albums, "top-albums")}
 
 </div>
 

@@ -235,7 +235,7 @@ class MusicAnalysisEngine:
             unique_albums.add(track["album"])
 
         duplicate_percentage = round(
-            (len(duplicate_data["duplicate_songs"]) / len(tracks)) * 100,
+            (duplicate_data["duplicate_songs_count"] / len(tracks)) * 100,
             1,
         ) if tracks else 0
 
@@ -275,7 +275,7 @@ class MusicAnalysisEngine:
 
         return [
             {"name": name, "count": count}
-            for name, count in song_counter.most_common(10)
+            for name, count in song_counter.most_common(25)
         ]
 
     def generate_daily_discovery(

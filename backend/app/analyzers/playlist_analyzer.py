@@ -50,7 +50,7 @@ class PlaylistAnalyzer:
                 playlist_items,
                 key=lambda playlist: playlist["count"],
                 reverse=True,
-            )[:10]
+            )[:25]
 
         return {
             "total_playlists": len(playlist_items),

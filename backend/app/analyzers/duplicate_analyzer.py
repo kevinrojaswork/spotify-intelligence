@@ -28,6 +28,6 @@ class DuplicateAnalyzer:
         )
 
         return {
-            "duplicate_songs": duplicate_songs[:10],
+            "duplicate_songs": duplicate_songs[:25],
             "duplicate_songs_count": len(duplicate_songs),
         }

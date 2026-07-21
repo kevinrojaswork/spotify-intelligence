@@ -14,6 +14,6 @@ class AlbumAnalyzer:
         return {
             "top_albums": [
                 {"name": name, "count": count}
-                for name, count in album_counter.most_common(10)
+                for name, count in album_counter.most_common(25)
             ]
         }

@@ -14,7 +14,7 @@ class ArtistAnalyzer:
 
         top_artists = [
             {"name": name, "count": count}
-            for name, count in artist_counter.most_common(10)
+            for name, count in artist_counter.most_common(25)
         ]
 
         dominant_artist = top_artists[0] if top_artists else None

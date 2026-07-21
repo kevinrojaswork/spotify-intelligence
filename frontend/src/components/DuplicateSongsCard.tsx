@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 
 type DuplicateSong = {
   name: string;
@@ -16,12 +16,36 @@ const PLAYLIST_PREVIEW_LIMIT = 3;
 
 function DuplicateSongsCard({ songs, duplicatePercentage }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const normalizedSearch = search.trim().toLocaleLowerCase("es");
+
+  const rankedSongs = songs.map((song, index) => ({
+    ...song,
+    rank: index + 1,
+  }));
+
+  const filteredSongs = normalizedSearch
+    ? rankedSongs.filter((song) =>
+        song.name.toLocaleLowerCase("es").includes(normalizedSearch)
+      )
+    : rankedSongs;
 
   const visibleSongs = isExpanded
-    ? songs
-    : songs.slice(0, DUPLICATE_PREVIEW_LIMIT);
+    ? filteredSongs
+    : rankedSongs.slice(0, DUPLICATE_PREVIEW_LIMIT);
 
   const hasMoreSongs = songs.length > DUPLICATE_PREVIEW_LIMIT;
+
+  const toggleExpanded = () => {
+    const nextValue = !isExpanded;
+
+    setIsExpanded(nextValue);
+
+    if (!nextValue) {
+      setSearch("");
+    }
+  };
 
   return (
     <section className="discovery-card duplicates-card">
@@ -37,43 +61,71 @@ function DuplicateSongsCard({ songs, duplicatePercentage }: Props) {
         <p>No encontramos canciones repetidas entre playlists.</p>
       ) : (
         <>
-          <div className="duplicates-list">
-            {visibleSongs.map((song, index) => {
-              const playlistPreview = song.playlists.slice(
-                0,
-                PLAYLIST_PREVIEW_LIMIT
-              );
+          {isExpanded && (
+            <div className="ranking-explorer">
+              <label className="ranking-search-field">
+                <span className="sr-only">Buscar una canción duplicada</span>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    setSearch(event.target.value)
+                  }
+                  placeholder={`Buscar entre ${songs.length} canciones duplicadas...`}
+                />
+              </label>
 
-              const remainingPlaylists =
-                song.playlists.length - playlistPreview.length;
+              <p className="ranking-result-summary">
+                {normalizedSearch
+                  ? `${filteredSongs.length} de ${songs.length} resultados`
+                  : `${songs.length} resultados disponibles`}
+              </p>
+            </div>
+          )}
 
-              return (
-                <div className="duplicate-item" key={song.name}>
-                  <span>#{index + 1}</span>
+          {visibleSongs.length > 0 ? (
+            <div className="duplicates-list">
+              {visibleSongs.map((song) => {
+                const playlistPreview = song.playlists.slice(
+                  0,
+                  PLAYLIST_PREVIEW_LIMIT
+                );
 
-                  <div>
-                    <strong>{song.name}</strong>
+                const remainingPlaylists =
+                  song.playlists.length - playlistPreview.length;
 
-                    <p>Aparece en {song.playlist_count} playlists</p>
+                return (
+                  <div className="duplicate-item" key={`${song.rank}-${song.name}`}>
+                    <span>#{song.rank}</span>
 
-                    {playlistPreview.length > 0 && (
-                      <p className="duplicate-playlists-preview">
-                        {playlistPreview.join(" · ")}
-                        {remainingPlaylists > 0 &&
-                          ` · y ${remainingPlaylists} más`}
-                      </p>
-                    )}
+                    <div>
+                      <strong>{song.name}</strong>
+
+                      <p>Aparece en {song.playlist_count} playlists</p>
+
+                      {playlistPreview.length > 0 && (
+                        <p className="duplicate-playlists-preview">
+                          {playlistPreview.join(" · ")}
+                          {remainingPlaylists > 0 &&
+                            ` · y ${remainingPlaylists} más`}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="ranking-empty-state">
+              No encontramos canciones que coincidan con esta búsqueda.
+            </p>
+          )}
 
           {hasMoreSongs && (
             <button
               type="button"
               className="show-more-list-button"
-              onClick={() => setIsExpanded((currentValue) => !currentValue)}
+              onClick={toggleExpanded}
             >
               {isExpanded
                 ? "Ver menos"
