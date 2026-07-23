@@ -10,9 +10,15 @@ type MusicalDNA = {
 
 type Props = {
   dna: MusicalDNA;
+  isLikedSongsMode?: boolean;
+  totalTracks?: number;
 };
 
-function MusicalDNACard({ dna }: Props) {
+function MusicalDNACard({
+  dna,
+  isLikedSongsMode = false,
+  totalTracks = 0,
+}: Props) {
   return (
     <section className="discovery-card dna-card">
       <p className="section-label">ADN Musical</p>
@@ -32,13 +38,20 @@ function MusicalDNACard({ dna }: Props) {
         </div>
 
         <div>
-          <strong>{dna.duplicate_songs_count}</strong>
-          <p>Canciones duplicadas</p>
+          <strong>
+            {isLikedSongsMode ? totalTracks : dna.duplicate_songs_count}
+          </strong>
+          <p>
+            {isLikedSongsMode
+              ? "Canciones guardadas"
+              : "Canciones duplicadas"}
+          </p>
         </div>
       </div>
 
       <p>{dna.concentration_label}</p>
-      <p>{dna.duplicate_label}</p>
+
+      {!isLikedSongsMode && <p>{dna.duplicate_label}</p>}
     </section>
   );
 }

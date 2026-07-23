@@ -1913,3 +1913,130 @@ html {
     grid-template-columns: 1fr;
   }
 }
+
+/* Colección especial: Canciones que te gustan */
+.liked-songs-selector-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 73, 118, 0.13),
+    rgba(30, 215, 96, 0.08)
+  );
+  color: #ffffff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.liked-songs-selector-card:hover,
+.liked-songs-selector-card:focus-visible {
+  border-color: rgba(255, 93, 137, 0.58);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 73, 118, 0.2),
+    rgba(30, 215, 96, 0.12)
+  );
+  transform: translateY(-1px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+  outline: none;
+}
+
+.liked-songs-selector-card.active {
+  border-color: rgba(30, 215, 96, 0.68);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 73, 118, 0.19),
+    rgba(30, 215, 96, 0.17)
+  );
+  box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.1);
+}
+
+.liked-songs-selector-card:disabled {
+  cursor: wait;
+  opacity: 0.62;
+  transform: none;
+}
+
+.playlist-selector-wrapper .liked-songs-selector-icon,
+.liked-songs-selector-icon {
+  width: 2.65rem;
+  height: 2.65rem;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 13px;
+  background: rgba(255, 73, 118, 0.16);
+  color: #ff759d;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.playlist-selector-wrapper .liked-songs-selector-copy,
+.liked-songs-selector-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0;
+  color: inherit;
+}
+
+.liked-songs-selector-copy strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.liked-songs-selector-copy small {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-selector-wrapper .liked-songs-selector-count,
+.liked-songs-selector-count {
+  padding: 0;
+  color: #1ed760;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .liked-songs-selector-card {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .playlist-selector-wrapper .liked-songs-selector-count,
+  .liked-songs-selector-count {
+    grid-column: 2;
+    white-space: normal;
+  }
+
+  .liked-songs-selector-copy strong,
+  .liked-songs-selector-copy small {
+    white-space: normal;
+  }
+}

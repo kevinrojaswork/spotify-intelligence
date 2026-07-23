@@ -4,6 +4,10 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
+from app.constants import (
+    LIKED_SONGS_COLLECTION_ID,
+    LIKED_SONGS_COLLECTION_TYPE,
+)
 from app.database.db import (
     get_all_tracks,
     get_spotify_user,
@@ -85,6 +89,47 @@ def get_cached_playlists_from_tracks(spotify_user_id: str):
     )
 
 
+def separate_analysis_collections(playlists: list[dict]):
+    regular_playlists = []
+    liked_songs = None
+
+    for playlist in playlists:
+        if playlist.get("spotify_playlist_id") == LIKED_SONGS_COLLECTION_ID:
+            liked_songs = {
+                **playlist,
+                "collection_type": LIKED_SONGS_COLLECTION_TYPE,
+                "is_special_collection": True,
+            }
+            continue
+
+        regular_playlists.append(playlist)
+
+    return regular_playlists, liked_songs
+
+
+def build_analysis_playlists_response(
+    spotify_user_id: str,
+    playlists: list[dict],
+    source: str,
+    needs_reconnect: bool,
+    message: str | None = None,
+):
+    regular_playlists, liked_songs = separate_analysis_collections(playlists)
+
+    response = {
+        "spotify_user_id": spotify_user_id,
+        "playlists": regular_playlists,
+        "liked_songs": liked_songs,
+        "source": source,
+        "needs_reconnect": needs_reconnect,
+    }
+
+    if message:
+        response["message"] = message
+
+    return response
+
+
 @router.get("/load")
 @router.post("/load")
 def load_engine(
@@ -150,48 +195,48 @@ def get_analysis_playlists(
     playlists = get_user_playlists(user_id)
 
     if playlists:
-        return {
-            "spotify_user_id": user_id,
-            "playlists": playlists,
-            "source": "database",
-            "needs_reconnect": False,
-        }
+        return build_analysis_playlists_response(
+            spotify_user_id=user_id,
+            playlists=playlists,
+            source="database",
+            needs_reconnect=False,
+        )
 
     cached_playlists = get_cached_playlists_from_tracks(user_id)
 
     if cached_playlists:
-        return {
-            "spotify_user_id": user_id,
-            "playlists": cached_playlists,
-            "source": "tracks_cache",
-            "needs_reconnect": False,
-        }
+        return build_analysis_playlists_response(
+            spotify_user_id=user_id,
+            playlists=cached_playlists,
+            source="tracks_cache",
+            needs_reconnect=False,
+        )
 
     sp = get_spotify_client(user_id)
 
     if not sp:
-        return {
-            "spotify_user_id": user_id,
-            "playlists": [],
-            "source": "empty_cache",
-            "needs_reconnect": True,
-            "message": (
+        return build_analysis_playlists_response(
+            spotify_user_id=user_id,
+            playlists=[],
+            source="empty_cache",
+            needs_reconnect=True,
+            message=(
                 "La conexión con Spotify expiró, pero el análisis guardado "
                 "continúa disponible."
             ),
-        }
+        )
 
     try:
         spotify_playlists = get_all_spotify_playlists(sp)
         save_user_playlists(user_id, spotify_playlists)
         playlists = get_user_playlists(user_id)
 
-        return {
-            "spotify_user_id": user_id,
-            "playlists": playlists,
-            "source": "spotify",
-            "needs_reconnect": False,
-        }
+        return build_analysis_playlists_response(
+            spotify_user_id=user_id,
+            playlists=playlists,
+            source="spotify",
+            needs_reconnect=False,
+        )
 
     except Exception:
         logger.exception(
@@ -201,16 +246,16 @@ def get_analysis_playlists(
 
         cached_playlists = get_cached_playlists_from_tracks(user_id)
 
-        return {
-            "spotify_user_id": user_id,
-            "playlists": cached_playlists,
-            "source": "spotify_error",
-            "needs_reconnect": False,
-            "message": (
+        return build_analysis_playlists_response(
+            spotify_user_id=user_id,
+            playlists=cached_playlists,
+            source="spotify_error",
+            needs_reconnect=False,
+            message=(
                 "No pudimos consultar Spotify en este momento. "
                 "Mostramos los datos guardados disponibles."
             ),
-        }
+        )
 
 
 @router.get("/sync-status")
@@ -264,4 +309,3 @@ def get_connected_user(
     )
 
     return get_spotify_user(user_id)
-

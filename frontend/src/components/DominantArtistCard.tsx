@@ -7,13 +7,18 @@ type Props = {
   artist: DominantArtist | null;
   percentage: number;
   isPlaylistMode?: boolean;
+  contextLabel?: string;
 };
 
 function DominantArtistCard({
   artist,
   percentage,
   isPlaylistMode = false,
+  contextLabel,
 }: Props) {
+  const resolvedContext =
+    contextLabel ?? (isPlaylistMode ? "en esta playlist" : "en tus playlists");
+
   return (
     <section className="discovery-card">
       <p className="section-label">Artista con mayor presencia</p>
@@ -25,10 +30,9 @@ function DominantArtistCard({
 
       {artist && (
         <p>
-          Es el artista que más aparece{" "}
-          {isPlaylistMode ? "en esta playlist" : "en tus playlists"}: tiene{" "}
-          {artist.count} apariciones, equivalentes al {percentage}% de las
-          canciones incluidas en este análisis.
+          Es el artista que más aparece {resolvedContext}: tiene {artist.count}{" "}
+          apariciones, equivalentes al {percentage}% de las canciones incluidas
+          en este análisis.
         </p>
       )}
     </section>

@@ -10,6 +10,7 @@ type Props = {
   items: TopItem[];
   unit: string;
   referenceMaxCount?: number;
+  showCount?: boolean;
 };
 
 function TopListCard({
@@ -18,6 +19,7 @@ function TopListCard({
   items,
   unit,
   referenceMaxCount,
+  showCount = true,
 }: Props) {
   const maxCount = Math.max(
     referenceMaxCount ?? Math.max(...items.map((item) => item.count), 1),
@@ -45,14 +47,19 @@ function TopListCard({
                   <span>
                     {position}. {item.name}
                   </span>
-                  <strong>
-                    {item.count} {unit}
-                  </strong>
+
+                  {showCount && (
+                    <strong>
+                      {item.count} {unit}
+                    </strong>
+                  )}
                 </div>
 
-                <div className="top-list-bar">
-                  <div style={{ width: `${width}%` }} />
-                </div>
+                {showCount && (
+                  <div className="top-list-bar">
+                    <div style={{ width: `${width}%` }} />
+                  </div>
+                )}
               </div>
             );
           })}

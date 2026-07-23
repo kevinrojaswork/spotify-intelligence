@@ -10,6 +10,7 @@ import MusicalDNACard from "../components/MusicalDNACard";
 import SmartInsightsCard from "../components/SmartInsightsCard";
 
 const API_BASE_URL = "https://spotify-intelligence-production.up.railway.app";
+const LIKED_SONGS_COLLECTION_ID = "__spotify_liked_songs__";
 
 type SyncStatus = "idle" | "syncing" | "completed" | "error";
 
@@ -19,6 +20,7 @@ type SyncResult = {
   playlists_loaded?: number;
   playlists_updated?: number;
   playlists_skipped?: number;
+  liked_songs_loaded?: number;
 };
 
 type TopItem = {
@@ -59,11 +61,14 @@ type PlaylistOption = {
   spotify_playlist_id: string;
   name: string;
   total_tracks: number;
+  collection_type?: "liked_songs";
+  is_special_collection?: boolean;
 };
 
 type DashboardStats = {
   spotify_user_id: string;
   spotify_playlist_id: string | null;
+  analysis_scope_type: "all_playlists" | "playlist" | "liked_songs";
   total_tracks: number;
   total_playlists: number;
   total_artists: number;
@@ -100,6 +105,8 @@ const PLAYLIST_SEARCH_RESULT_LIMIT = 10;
 function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
+  const [likedSongsCollection, setLikedSongsCollection] =
+    useState<PlaylistOption | null>(null);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
@@ -221,6 +228,7 @@ function Dashboard() {
         localStorage.removeItem("selected_playlist_id");
         setSelectedPlaylistId("");
         setPlaylists([]);
+        setLikedSongsCollection(null);
 
         return [] as PlaylistOption[];
       }
@@ -233,17 +241,22 @@ function Dashboard() {
         localStorage.removeItem("selected_playlist_id");
         setSelectedPlaylistId("");
         setPlaylists([]);
+        setLikedSongsCollection(null);
 
         return [] as PlaylistOption[];
       }
 
       const data = await response.json();
-      const playlistList = data.playlists || [];
+      const playlistList = (data.playlists || []) as PlaylistOption[];
+      const likedSongs = (data.liked_songs || null) as PlaylistOption | null;
 
       setNeedsReconnect(Boolean(data.needs_reconnect));
       setPlaylists(playlistList);
+      setLikedSongsCollection(likedSongs);
 
-      return playlistList as PlaylistOption[];
+      return likedSongs
+        ? [likedSongs, ...playlistList]
+        : playlistList;
     } catch (error) {
       console.error("Error cargando playlists:", error);
 
@@ -255,6 +268,7 @@ function Dashboard() {
       localStorage.removeItem("selected_playlist_id");
       setSelectedPlaylistId("");
       setPlaylists([]);
+      setLikedSongsCollection(null);
 
       return [] as PlaylistOption[];
     }
@@ -701,9 +715,12 @@ useEffect(() => {
   };
 
 
-  const selectedPlaylist = playlists.find(
-    (playlist) => playlist.spotify_playlist_id === selectedPlaylistId
-  );
+  const selectedPlaylist =
+    selectedPlaylistId === LIKED_SONGS_COLLECTION_ID
+      ? likedSongsCollection
+      : playlists.find(
+          (playlist) => playlist.spotify_playlist_id === selectedPlaylistId
+        );
 
 
   const playlistsWithSongs = playlists.filter(
@@ -912,21 +929,31 @@ const hasVisiblePlaylistResults =
     ? selectedPlaylist.name
     : "Todas mis playlists";
 
-    const availablePlaylistCount =
-  playlists.length > 0 ? playlists.length : stats?.total_playlists ?? 0;
+  const availablePlaylistCount =
+    playlists.length > 0 ? playlists.length : stats?.total_playlists ?? 0;
 
   const isPlaylistMode = Boolean(selectedPlaylistId);
+  const isLikedSongsMode =
+    selectedPlaylistId === LIKED_SONGS_COLLECTION_ID ||
+    stats?.analysis_scope_type === "liked_songs";
+
+  const hasLikedSongs = (likedSongsCollection?.total_tracks ?? 0) > 0;
 
   const isEmptyPlaylist =
-  isPlaylistMode && stats !== null && stats.total_tracks === 0;
+    isPlaylistMode && stats !== null && stats.total_tracks === 0;
 
   const playlistDiscovery = stats?.dominant_artist
-    ? `${stats.dominant_artist.name} es el artista que más aparece en esta playlist: tiene ${stats.dominant_artist.count} apariciones, equivalentes al ${stats.dominant_artist_percentage}% de sus canciones.`
-    : "Esta playlist ya fue analizada correctamente.";
+    ? isLikedSongsMode
+      ? `${stats.dominant_artist.name} es el artista con más canciones guardadas en Me gusta: tiene ${stats.dominant_artist.count} apariciones, equivalentes al ${stats.dominant_artist_percentage}% de esta colección.`
+      : `${stats.dominant_artist.name} es el artista que más aparece en esta playlist: tiene ${stats.dominant_artist.count} apariciones, equivalentes al ${stats.dominant_artist_percentage}% de sus canciones.`
+    : isLikedSongsMode
+      ? "Tu colección de Canciones que te gustan ya fue analizada correctamente."
+      : "Esta playlist ya fue analizada correctamente.";
 
-  const repeatedSongsInPlaylist = stats
-  ? stats.top_songs.filter((song) => song.count >= 2)
-  : [];
+  const repeatedSongsInPlaylist =
+    stats && !isLikedSongsMode
+      ? stats.top_songs.filter((song) => song.count >= 2)
+      : [];
 
   const formatLastSync = (value: string | null) => {
     if (!value) {
@@ -1116,7 +1143,10 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
     );
   }
 
-  if (!stats || (!isPlaylistMode && stats.total_tracks === 0)) {
+  if (
+    !stats ||
+    (!isPlaylistMode && stats.total_tracks === 0 && !hasLikedSongs)
+  ) {
     return (
       <div id="dashboard-overview" className="dashboard">
         <section className="discovery-card">
@@ -1136,21 +1166,24 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
       <div id="dashboard-overview" className="dashboard">
         <section className="analysis-scope-card">
           <div>
-            <p className="section-label">Modo playlist</p>
+            <p className="section-label">
+              {isLikedSongsMode ? "Colección personal" : "Modo playlist"}
+            </p>
 
             <h2>Analizando: {currentScopeLabel}</h2>
 
             <p>
-              Esta playlist está guardada en Spotify, pero todavía no contiene
-              canciones.
+              {isLikedSongsMode
+                ? "Todavía no tienes canciones guardadas con Me gusta en Spotify."
+                : "Esta playlist está guardada en Spotify, pero todavía no contiene canciones."}
             </p>
 
             <span className="playlist-count-label">
-              0 canciones en esta playlist
+              0 canciones en este análisis
             </span>
 
             <p className="scope-change-hint">
-              Puedes elegir otra playlist sin sincronizar nuevamente con Spotify.
+              Puedes elegir otro análisis sin sincronizar nuevamente con Spotify.
             </p>
           </div>
 
@@ -1164,7 +1197,7 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
             >
               {isPlaylistSelectorOpen
                 ? "Ocultar selector"
-                : "Elegir otra playlist"}
+                : "Elegir otro análisis"}
             </button>
 
             <button
@@ -1181,6 +1214,32 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
   <label htmlFor="empty-playlist-selector">
     Seleccionar análisis
   </label>
+
+  {likedSongsCollection && (
+    <button
+      type="button"
+      className={`liked-songs-selector-card ${
+        selectedPlaylistId === LIKED_SONGS_COLLECTION_ID ? "active" : ""
+      }`}
+      onClick={() =>
+        void selectPlaylistForAnalysis(LIKED_SONGS_COLLECTION_ID)
+      }
+      disabled={isChangingScope}
+    >
+      <span className="liked-songs-selector-icon" aria-hidden="true">
+        ❤️
+      </span>
+
+      <span className="liked-songs-selector-copy">
+        <strong>Canciones que te gustan</strong>
+        <small>Colección personal de Spotify</small>
+      </span>
+
+      <span className="liked-songs-selector-count">
+        {likedSongsCollection.total_tracks} canciones
+      </span>
+    </button>
+  )}
 
     <div className="playlist-search-field">
     <input
@@ -1244,6 +1303,14 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
   >
     <option value="">Todas mis playlists</option>
 
+    {likedSongsCollection && (
+      <optgroup label="Colección personal">
+        <option value={LIKED_SONGS_COLLECTION_ID}>
+          ❤️ Canciones que te gustan — {likedSongsCollection.total_tracks} canciones
+        </option>
+      </optgroup>
+    )}
+
     {visiblePlaylistsWithSongs.length > 0 && (
   <optgroup
     label={`Con canciones (${visiblePlaylistsWithSongs.length})`}
@@ -1282,13 +1349,16 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
     </section>
 
         <section className="discovery-card empty-playlist-card">
-          <p className="section-label">Playlist vacía</p>
+          <p className="section-label">
+            {isLikedSongsMode ? "Colección vacía" : "Playlist vacía"}
+          </p>
 
           <h2>{currentScopeLabel} todavía no tiene canciones.</h2>
 
           <p>
-            Esta playlist seguirá disponible entre tus playlists. Agrega canciones
-            desde Spotify y luego presiona{" "}
+            {isLikedSongsMode
+              ? "Marca canciones con Me gusta desde Spotify y luego presiona "
+              : "Esta playlist seguirá disponible entre tus playlists. Agrega canciones desde Spotify y luego presiona "}
             <strong>Sincronizar cambios de Spotify</strong> para analizarla.
           </p>
         </section>
@@ -1303,20 +1373,26 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
       <section className="analysis-scope-card analysis-scope-card-visual">
         <div className="analysis-visual-summary">
           <div className="analysis-visual-icon" aria-hidden="true">
-            {isPlaylistMode ? "🎧" : "📚"}
+            {isLikedSongsMode ? "❤️" : isPlaylistMode ? "🎧" : "📚"}
           </div>
 
           <div className="analysis-visual-copy">
             <p className="section-label">
-              {isPlaylistMode ? "Playlist individual" : "Análisis general"}
+              {isLikedSongsMode
+                ? "Colección personal"
+                : isPlaylistMode
+                  ? "Playlist individual"
+                  : "Análisis general"}
             </p>
 
             <h2>{currentScopeLabel}</h2>
 
             <p className="analysis-visual-description">
-              {isPlaylistMode
-                ? "Resultados calculados únicamente con las canciones de esta playlist."
-                : "Una vista conjunta de las canciones guardadas en todas tus playlists de Spotify."}
+              {isLikedSongsMode
+                ? "Análisis independiente de las canciones que guardaste con Me gusta en Spotify."
+                : isPlaylistMode
+                  ? "Resultados calculados únicamente con las canciones de esta playlist."
+                  : "Una vista conjunta de las canciones guardadas en todas tus playlists de Spotify."}
             </p>
 
             {!isPlaylistMode && playlists.length > 0 && (
@@ -1349,8 +1425,10 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
 
         <div className="analysis-visual-footer">
           <p className="analysis-quick-note">
-            <span aria-hidden="true">⚡</span> Cambiar de playlist usa los datos
-            guardados y es inmediato.
+            <span aria-hidden="true">⚡</span>{" "}
+            {isLikedSongsMode
+              ? "Esta colección se actualiza al sincronizar cambios de Spotify."
+              : "Cambiar de análisis usa los datos guardados y es inmediato."}
           </p>
 
           <div className="analysis-visual-actions">
@@ -1359,7 +1437,7 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
               className="secondary-button"
               onClick={() => setIsPlaylistSelectorOpen((isOpen) => !isOpen)}
             >
-              {isPlaylistSelectorOpen ? "Ocultar selector" : "Elegir otra playlist"}
+              {isPlaylistSelectorOpen ? "Ocultar selector" : "Elegir otro análisis"}
             </button>
 
             {selectedPlaylistId && (
@@ -1377,6 +1455,34 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
         {isPlaylistSelectorOpen && (
           <div className="playlist-selector-wrapper analysis-visual-selector">
             <label htmlFor="playlist-selector">Seleccionar análisis</label>
+
+            {likedSongsCollection && (
+              <button
+                type="button"
+                className={`liked-songs-selector-card ${
+                  selectedPlaylistId === LIKED_SONGS_COLLECTION_ID
+                    ? "active"
+                    : ""
+                }`}
+                onClick={() =>
+                  void selectPlaylistForAnalysis(LIKED_SONGS_COLLECTION_ID)
+                }
+                disabled={isChangingScope}
+              >
+                <span className="liked-songs-selector-icon" aria-hidden="true">
+                  ❤️
+                </span>
+
+                <span className="liked-songs-selector-copy">
+                  <strong>Canciones que te gustan</strong>
+                  <small>Colección personal de Spotify</small>
+                </span>
+
+                <span className="liked-songs-selector-count">
+                  {likedSongsCollection.total_tracks} canciones
+                </span>
+              </button>
+            )}
 
             <div className="playlist-search-field">
               <input
@@ -1438,6 +1544,15 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
               disabled={isChangingScope}
             >
               <option value="">Todas mis playlists</option>
+
+              {likedSongsCollection && (
+                <optgroup label="Colección personal">
+                  <option value={LIKED_SONGS_COLLECTION_ID}>
+                    ❤️ Canciones que te gustan — {likedSongsCollection.total_tracks}{" "}
+                    canciones
+                  </option>
+                </optgroup>
+              )}
 
               {visiblePlaylistsWithSongs.length > 0 && (
                 <optgroup
@@ -1535,7 +1650,9 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
 {!isPlaylistMode && <a href="#top-playlists">Top playlists</a>}
 
  <a href="#top-artists">Top artistas</a>
-  <a href="#top-songs">Top canciones</a>
+  <a href="#top-songs">
+    {isLikedSongsMode ? "Canciones guardadas" : "Top canciones"}
+  </a>
   <a href="#top-albums">Top álbumes</a>
 
   {!isPlaylistMode && <a href="#duplicate-songs">Duplicadas</a>}
@@ -1572,12 +1689,20 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
 
       {isPlaylistMode ? (
         <section className="discovery-card playlist-context-card">
-          <p className="section-label">Resumen de esta playlist</p>
+          <p className="section-label">
+            {isLikedSongsMode
+              ? "Resumen de Canciones que te gustan"
+              : "Resumen de esta playlist"}
+          </p>
           <h2>{playlistDiscovery}</h2>
           <p>
-            Este análisis usa únicamente las canciones guardadas dentro de{" "}
-            <strong>{currentScopeLabel}</strong>. No representa tu historial de
-            reproducción.
+            {isLikedSongsMode
+              ? "Este análisis usa únicamente las canciones que guardaste con Me gusta en Spotify."
+              : <>
+                  Este análisis usa únicamente las canciones guardadas dentro de{" "}
+                  <strong>{currentScopeLabel}</strong>. No representa tu historial de
+                  reproducción.
+                </>}
           </p>
         </section>
       ) : (
@@ -1591,7 +1716,11 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
   <section id="dashboard-summary" className="playlist-mode-summary-grid">
           <div className="playlist-mode-stat-card">
             <span>🎵</span>
-            <p>Canciones en esta playlist</p>
+            <p>
+              {isLikedSongsMode
+                ? "Canciones guardadas con Me gusta"
+                : "Canciones en esta playlist"}
+            </p>
             <strong>{stats.total_tracks}</strong>
           </div>
 
@@ -1608,10 +1737,14 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
           </div>
 
           <div className="playlist-mode-stat-card">
-  <span>🔁</span>
-  <p>Duplicadas detectadas</p>
-  <strong>{repeatedSongsInPlaylist.length}</strong>
-</div>
+            <span>{isLikedSongsMode ? "🧬" : "🔁"}</span>
+            <p>{isLikedSongsMode ? "Diversidad musical" : "Duplicadas detectadas"}</p>
+            <strong>
+              {isLikedSongsMode
+                ? `${stats.musical_dna.diversity_score}%`
+                : repeatedSongsInPlaylist.length}
+            </strong>
+          </div>
         </section>
       ) : (
   <div id="dashboard-summary">
@@ -1625,7 +1758,11 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
 )}
 
       <div id="musical-dna">
-  <MusicalDNACard dna={stats.musical_dna} />
+  <MusicalDNACard
+    dna={stats.musical_dna}
+    isLikedSongsMode={isLikedSongsMode}
+    totalTracks={stats.total_tracks}
+  />
 </div>
 
       {!isPlaylistMode && (
@@ -1638,6 +1775,11 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
         artist={stats.dominant_artist}
         percentage={stats.dominant_artist_percentage}
         isPlaylistMode={isPlaylistMode}
+        contextLabel={
+          isLikedSongsMode
+            ? "en tus Canciones que te gustan"
+            : undefined
+        }
       />
 
       {!isPlaylistMode && (
@@ -1666,9 +1808,11 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
   <TopListCard
     label="Top artistas"
     title={
-      isPlaylistMode
-        ? "Artistas que más aparecen en esta playlist"
-        : "Artistas que más aparecen en tus playlists"
+      isLikedSongsMode
+        ? "Artistas con más canciones guardadas en Me gusta"
+        : isPlaylistMode
+          ? "Artistas que más aparecen en esta playlist"
+          : "Artistas que más aparecen en tus playlists"
     }
     items={getFilteredTopItems(stats.top_artists, "top-artists")}
     unit="canciones"
@@ -1681,7 +1825,19 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
 </div>
 
 <div id="top-songs">
-  {isPlaylistMode ? (
+  {isLikedSongsMode ? (
+    <>
+      <TopListCard
+        label="Canciones guardadas"
+        title="Canciones de tu colección, ordenadas alfabéticamente"
+        items={getFilteredTopItems(stats.top_songs, "top-songs")}
+        unit=""
+        showCount={false}
+      />
+
+      {renderTopListExplorer(stats.top_songs, "top-songs")}
+    </>
+  ) : isPlaylistMode ? (
     repeatedSongsInPlaylist.length > 0 ? (
       <>
         <TopListCard
@@ -1723,9 +1879,11 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
   <TopListCard
     label="Top álbumes"
     title={
-      isPlaylistMode
-        ? "Álbumes con más canciones en esta playlist"
-        : "Álbumes con más canciones guardadas en tus playlists"
+      isLikedSongsMode
+        ? "Álbumes con más canciones guardadas en Me gusta"
+        : isPlaylistMode
+          ? "Álbumes con más canciones en esta playlist"
+          : "Álbumes con más canciones guardadas en tus playlists"
     }
     items={getFilteredTopItems(stats.top_albums, "top-albums")}
     unit="canciones"

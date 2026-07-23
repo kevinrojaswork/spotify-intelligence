@@ -40,6 +40,11 @@ def run_spotify_sync(spotify_user_id: str):
                 "Tu conexión con Spotify expiró. "
                 "Vuelve a conectar tu cuenta para actualizar."
             )
+        elif http_status == 403:
+            user_message = (
+                "Spotify no autorizó el acceso a Canciones que te gustan. "
+                "Vuelve a conectar tu cuenta y acepta el permiso de lectura."
+            )
         elif http_status == 429:
             user_message = (
                 "Spotify limitó temporalmente las solicitudes. "

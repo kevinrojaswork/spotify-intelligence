@@ -2,6 +2,11 @@ from collections import Counter
 from datetime import datetime
 from typing import Callable, Optional
 
+from app.constants import (
+    LIKED_SONGS_COLLECTION_ID,
+    LIKED_SONGS_COLLECTION_NAME,
+    LIKED_SONGS_COLLECTION_TYPE,
+)
 from app.database.db import (
     apply_music_sync,
     count_tracks_for_playlist,
@@ -63,6 +68,51 @@ class MusicAnalysisEngine:
 
         return tracks
 
+    def get_all_saved_tracks(
+        self,
+        sp,
+        progress_callback: ProgressCallback = None,
+    ):
+        saved_tracks = []
+        results = sp.current_user_saved_tracks(limit=50)
+
+        while results:
+            saved_tracks.extend(results.get("items", []))
+            self._report_progress(progress_callback)
+
+            if results.get("next"):
+                results = sp.next(results)
+            else:
+                break
+
+        return saved_tracks
+
+    def _build_track_data(
+        self,
+        item: dict,
+        collection_id: str,
+        collection_name: str,
+    ) -> dict | None:
+        track = item.get("track")
+
+        if not track:
+            return None
+
+        artists = [
+            artist.get("name") or "Artista desconocido"
+            for artist in track.get("artists", [])
+            if artist
+        ]
+        album = track.get("album") or {}
+
+        return {
+            "spotify_playlist_id": collection_id,
+            "playlist": collection_name,
+            "track_name": track.get("name", "Sin nombre"),
+            "artists": artists,
+            "album": album.get("name", "Sin álbum"),
+        }
+
     def sync(
         self,
         sp,
@@ -77,7 +127,11 @@ class MusicAnalysisEngine:
         init_db()
         self._report_progress(progress_callback)
 
-        playlists = self.get_all_playlists(
+        spotify_playlists = self.get_all_playlists(
+            sp,
+            progress_callback=progress_callback,
+        )
+        saved_track_items = self.get_all_saved_tracks(
             sp,
             progress_callback=progress_callback,
         )
@@ -88,7 +142,7 @@ class MusicAnalysisEngine:
         playlists_updated = 0
         playlists_skipped = 0
 
-        for playlist in playlists:
+        for playlist in spotify_playlists:
             self._report_progress(progress_callback)
 
             playlist_id = playlist.get("id")
@@ -132,40 +186,65 @@ class MusicAnalysisEngine:
             tracks_data = []
 
             for item in playlist_tracks:
-                track = item.get("track")
-
-                if not track:
-                    continue
-
-                artists = [
-                    artist.get("name") or "Artista desconocido"
-                    for artist in track.get("artists", [])
-                    if artist
-                ]
-
-                album = track.get("album") or {}
-
-                tracks_data.append(
-                    {
-                        "spotify_playlist_id": playlist_id,
-                        "playlist": playlist_name,
-                        "track_name": track.get("name", "Sin nombre"),
-                        "artists": artists,
-                        "album": album.get("name", "Sin álbum"),
-                    }
+                track_data = self._build_track_data(
+                    item,
+                    playlist_id,
+                    playlist_name,
                 )
+
+                if track_data:
+                    tracks_data.append(track_data)
 
             # Todavía no tocamos la base. Solo preparamos el reemplazo.
             tracks_by_playlist[playlist_id] = tracks_data
             total_tracks_loaded += len(tracks_data)
             playlists_updated += 1
 
+        liked_tracks_data = []
+
+        for item in saved_track_items:
+            track_data = self._build_track_data(
+                item,
+                LIKED_SONGS_COLLECTION_ID,
+                LIKED_SONGS_COLLECTION_NAME,
+            )
+
+            if track_data:
+                liked_tracks_data.append(track_data)
+
+        # Esta colección no tiene snapshot_id en Spotify. Se reemplaza en cada
+        # sincronización para detectar también cambios que no alteran el total.
+        tracks_by_playlist[LIKED_SONGS_COLLECTION_ID] = liked_tracks_data
+        total_tracks_loaded += len(liked_tracks_data)
+
+        latest_saved_at = (
+            saved_track_items[0].get("added_at")
+            if saved_track_items
+            else "empty"
+        )
+        liked_collection = {
+            "id": LIKED_SONGS_COLLECTION_ID,
+            "name": LIKED_SONGS_COLLECTION_NAME,
+            "owner": {
+                "id": spotify_user_id,
+                "display_name": "Spotify",
+            },
+            "public": False,
+            "snapshot_id": (
+                f"liked:{len(liked_tracks_data)}:{latest_saved_at or ''}"
+            ),
+            "tracks": {"total": len(liked_tracks_data)},
+        }
+
+        collections_for_storage = [*spotify_playlists, liked_collection]
+
         sync_result = {
             "message": "Análisis actualizado correctamente",
             "tracks_loaded": total_tracks_loaded,
-            "playlists_loaded": len(playlists),
+            "playlists_loaded": len(spotify_playlists),
             "playlists_updated": playlists_updated,
             "playlists_skipped": playlists_skipped,
+            "liked_songs_loaded": len(liked_tracks_data),
         }
 
         synced_at = datetime.now().isoformat(timespec="seconds")
@@ -173,7 +252,7 @@ class MusicAnalysisEngine:
         # Esta operación es atómica: o se aplica todo, o no se aplica nada.
         apply_music_sync(
             spotify_user_id=spotify_user_id,
-            playlists=playlists,
+            playlists=collections_for_storage,
             tracks_by_playlist=tracks_by_playlist,
             sync_result=sync_result,
             synced_at=synced_at,
@@ -182,24 +261,44 @@ class MusicAnalysisEngine:
         return sync_result
 
     def analyze(self, spotify_user_id, spotify_playlist_id=None):
+        is_liked_songs_collection = (
+            spotify_playlist_id == LIKED_SONGS_COLLECTION_ID
+        )
+
         # Variable local: evita que solicitudes simultáneas de usuarios distintos
         # compartan o sobrescriban canciones dentro del motor global.
-        tracks = get_all_tracks(
-            spotify_user_id,
-            spotify_playlist_id=spotify_playlist_id,
-        )
+        if spotify_playlist_id:
+            tracks = get_all_tracks(
+                spotify_user_id,
+                spotify_playlist_id=spotify_playlist_id,
+            )
+        else:
+            # "Todas mis playlists" conserva su significado original. La
+            # colección Me gusta se analiza por separado para evitar duplicar
+            # canciones que también aparecen dentro de playlists.
+            tracks = [
+                track
+                for track in get_all_tracks(spotify_user_id)
+                if track.get("spotify_playlist_id")
+                != LIKED_SONGS_COLLECTION_ID
+            ]
 
         artist_data = ArtistAnalyzer(tracks).analyze()
         album_data = AlbumAnalyzer(tracks).analyze()
         playlist_data = PlaylistAnalyzer(tracks).analyze()
         duplicate_data = DuplicateAnalyzer(tracks).analyze()
 
-        all_user_playlists = get_user_playlists(spotify_user_id)
+        regular_playlists = [
+            playlist
+            for playlist in get_user_playlists(spotify_user_id)
+            if playlist.get("spotify_playlist_id")
+            != LIKED_SONGS_COLLECTION_ID
+        ]
 
         total_library_playlists = (
             1
             if spotify_playlist_id
-            else len(all_user_playlists)
+            else len(regular_playlists)
         )
 
         dna_data = DNAAnalyzer(
@@ -217,12 +316,17 @@ class MusicAnalysisEngine:
             dna_data,
         ).analyze()
 
-        top_songs = self.get_top_songs(tracks)
+        top_songs = (
+            self.get_collection_songs(tracks)
+            if is_liked_songs_collection
+            else self.get_top_songs(tracks)
+        )
 
         daily_discovery = self.generate_daily_discovery(
             artist_data,
             duplicate_data,
             playlist_data,
+            is_liked_songs_collection=is_liked_songs_collection,
         )
 
         unique_artists = set()
@@ -239,9 +343,17 @@ class MusicAnalysisEngine:
             1,
         ) if tracks else 0
 
+        if is_liked_songs_collection:
+            analysis_scope_type = LIKED_SONGS_COLLECTION_TYPE
+        elif spotify_playlist_id:
+            analysis_scope_type = "playlist"
+        else:
+            analysis_scope_type = "all_playlists"
+
         return {
             "spotify_user_id": spotify_user_id,
             "spotify_playlist_id": spotify_playlist_id,
+            "analysis_scope_type": analysis_scope_type,
             "total_tracks": len(tracks),
             "total_playlists": total_library_playlists,
             "total_artists": len(unique_artists),
@@ -278,16 +390,35 @@ class MusicAnalysisEngine:
             for name, count in song_counter.most_common(25)
         ]
 
+    def get_collection_songs(self, tracks: list[dict]):
+        song_names = [
+            f"{track['track_name']} — {', '.join(track['artists'])}"
+            for track in tracks
+        ]
+
+        return [
+            {"name": name, "count": 1}
+            for name in sorted(song_names, key=str.casefold)[:25]
+        ]
+
     def generate_daily_discovery(
         self,
         artist_data,
         duplicate_data,
         playlist_data,
+        is_liked_songs_collection: bool = False,
     ):
         dominant_artist = artist_data["dominant_artist"]
         dominant_percentage = artist_data["dominant_artist_percentage"]
 
         if dominant_artist:
+            if is_liked_songs_collection:
+                return (
+                    f"{dominant_artist['name']} es el artista con más canciones "
+                    f"guardadas en Me gusta: aparece {dominant_artist['count']} "
+                    f"veces, equivalente al {dominant_percentage}% de la colección."
+                )
+
             return (
                 f"{dominant_artist['name']} domina tu biblioteca: aparece "
                 f"{dominant_artist['count']} veces, equivalente al "
@@ -311,8 +442,10 @@ class MusicAnalysisEngine:
                 f"presente en {top_duplicate['playlist_count']} playlists."
             )
 
+        if is_liked_songs_collection:
+            return "Tu colección de Canciones que te gustan ya fue analizada."
+
         return "Tu biblioteca musical ya fue analizada correctamente."
 
 
 engine = MusicAnalysisEngine()
-
