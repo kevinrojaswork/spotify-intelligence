@@ -18,6 +18,7 @@ from app.database.db import (
 )
 
 from app.analyzers.album_analyzer import AlbumAnalyzer
+from app.analyzers.comparison_analyzer import PlaylistComparisonAnalyzer
 from app.analyzers.artist_analyzer import ArtistAnalyzer
 from app.analyzers.dna_analyzer import DNAAnalyzer
 from app.analyzers.duplicate_analyzer import DuplicateAnalyzer
@@ -259,6 +260,28 @@ class MusicAnalysisEngine:
         )
 
         return sync_result
+
+    def compare_collections(
+        self,
+        spotify_user_id: str,
+        collection_a: dict,
+        collection_b: dict,
+    ):
+        tracks_a = get_all_tracks(
+            spotify_user_id,
+            spotify_playlist_id=collection_a["spotify_playlist_id"],
+        )
+        tracks_b = get_all_tracks(
+            spotify_user_id,
+            spotify_playlist_id=collection_b["spotify_playlist_id"],
+        )
+
+        return PlaylistComparisonAnalyzer(
+            collection_a=collection_a,
+            tracks_a=tracks_a,
+            collection_b=collection_b,
+            tracks_b=tracks_b,
+        ).analyze()
 
     def analyze(self, spotify_user_id, spotify_playlist_id=None):
         is_liked_songs_collection = (

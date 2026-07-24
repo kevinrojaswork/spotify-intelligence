@@ -8,6 +8,7 @@ import TopListCard from "../components/TopListCard";
 import DuplicateSongsCard from "../components/DuplicateSongsCard";
 import MusicalDNACard from "../components/MusicalDNACard";
 import SmartInsightsCard from "../components/SmartInsightsCard";
+import PlaylistComparisonCard from "../components/PlaylistComparisonCard";
 
 const API_BASE_URL = "https://spotify-intelligence-production.up.railway.app";
 const LIKED_SONGS_COLLECTION_ID = "__spotify_liked_songs__";
@@ -939,6 +940,10 @@ const hasVisiblePlaylistResults =
 
   const hasLikedSongs = (likedSongsCollection?.total_tracks ?? 0) > 0;
 
+  const comparisonCollections = likedSongsCollection
+    ? [likedSongsCollection, ...playlists]
+    : playlists;
+
   const isEmptyPlaylist =
     isPlaylistMode && stats !== null && stats.total_tracks === 0;
 
@@ -1641,6 +1646,7 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
 
       <nav className="dashboard-section-nav">
   <a href="#dashboard-summary">Resumen</a>
+  <a href="#playlist-comparison">Comparar playlists</a>
   <a href="#musical-dna">ADN Musical</a>
 
   {!isPlaylistMode && (
@@ -1756,6 +1762,10 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
     />
   </div>
 )}
+
+      <div id="playlist-comparison">
+        <PlaylistComparisonCard collections={comparisonCollections} />
+      </div>
 
       <div id="musical-dna">
   <MusicalDNACard

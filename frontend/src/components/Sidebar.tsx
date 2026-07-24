@@ -8,6 +8,7 @@ type DashboardSection = {
 
 const DASHBOARD_SECTIONS: DashboardSection[] = [
   { id: "dashboard-summary", label: "Resumen", icon: "▦" },
+  { id: "playlist-comparison", label: "Comparar playlists", icon: "⇄" },
   { id: "musical-dna", label: "ADN musical", icon: "◉" },
   { id: "smart-insights", label: "Insights inteligentes", icon: "✦" },
   { id: "top-playlists", label: "Top playlists", icon: "≡" },

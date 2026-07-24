@@ -186,6 +186,49 @@ def get_dashboard(
     )
 
 
+@router.get("/compare-playlists")
+def compare_playlists(
+    playlist_a_id: str,
+    playlist_b_id: str,
+    user_id: str = Depends(get_authenticated_spotify_user_id),
+):
+    if playlist_a_id == playlist_b_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Selecciona dos colecciones diferentes.",
+        )
+
+    init_db()
+    collections = get_user_playlists(user_id)
+
+    if not collections:
+        collections = get_cached_playlists_from_tracks(user_id)
+
+    collection_map = {
+        collection.get("spotify_playlist_id"): collection
+        for collection in collections
+        if collection.get("spotify_playlist_id")
+    }
+
+    collection_a = collection_map.get(playlist_a_id)
+    collection_b = collection_map.get(playlist_b_id)
+
+    if not collection_a or not collection_b:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "No encontramos una de las colecciones en tu análisis guardado. "
+                "Sincroniza Spotify e inténtalo nuevamente."
+            ),
+        )
+
+    return engine.compare_collections(
+        spotify_user_id=user_id,
+        collection_a=collection_a,
+        collection_b=collection_b,
+    )
+
+
 @router.get("/analysis-playlists")
 def get_analysis_playlists(
     user_id: str = Depends(get_authenticated_spotify_user_id),
