@@ -9,6 +9,7 @@ import DuplicateSongsCard from "../components/DuplicateSongsCard";
 import MusicalDNACard from "../components/MusicalDNACard";
 import SmartInsightsCard from "../components/SmartInsightsCard";
 import PlaylistComparisonCard from "../components/PlaylistComparisonCard";
+import { ENABLE_PLAYLIST_COMPARISON } from "../config/features";
 
 const API_BASE_URL = "https://spotify-intelligence-production.up.railway.app";
 const LIKED_SONGS_COLLECTION_ID = "__spotify_liked_songs__";
@@ -1646,7 +1647,9 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
 
       <nav className="dashboard-section-nav">
   <a href="#dashboard-summary">Resumen</a>
-  <a href="#playlist-comparison">Comparar playlists</a>
+  {ENABLE_PLAYLIST_COMPARISON && (
+    <a href="#playlist-comparison">Comparar playlists</a>
+  )}
   <a href="#musical-dna">ADN Musical</a>
 
   {!isPlaylistMode && (
@@ -1763,9 +1766,11 @@ const renderTopListExplorer = (items: TopItem[], key: TopListKey) => {
   </div>
 )}
 
-      <div id="playlist-comparison">
-        <PlaylistComparisonCard collections={comparisonCollections} />
-      </div>
+      {ENABLE_PLAYLIST_COMPARISON && (
+        <div id="playlist-comparison">
+          <PlaylistComparisonCard collections={comparisonCollections} />
+        </div>
+      )}
 
       <div id="musical-dna">
   <MusicalDNACard

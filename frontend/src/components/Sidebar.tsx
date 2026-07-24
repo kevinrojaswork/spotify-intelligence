@@ -1,5 +1,7 @@
 import { useEffect, useState, type MouseEvent } from "react";
 
+import { ENABLE_PLAYLIST_COMPARISON } from "../config/features";
+
 type DashboardSection = {
   id: string;
   label: string;
@@ -8,7 +10,9 @@ type DashboardSection = {
 
 const DASHBOARD_SECTIONS: DashboardSection[] = [
   { id: "dashboard-summary", label: "Resumen", icon: "▦" },
-  { id: "playlist-comparison", label: "Comparar playlists", icon: "⇄" },
+  ...(ENABLE_PLAYLIST_COMPARISON
+    ? [{ id: "playlist-comparison", label: "Comparar playlists", icon: "⇄" }]
+    : []),
   { id: "musical-dna", label: "ADN musical", icon: "◉" },
   { id: "smart-insights", label: "Insights inteligentes", icon: "✦" },
   { id: "top-playlists", label: "Top playlists", icon: "≡" },
