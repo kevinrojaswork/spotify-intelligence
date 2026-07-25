@@ -7,7 +7,7 @@ import "../styles/SupportTest.css";
 const API_BASE_URL =
   "https://spotify-intelligence-production.up.railway.app";
 type PayPalConfig = {
-  client_token: string;
+  client_id: string;
   environment: "sandbox" | "live";
   amount: string;
   currency: string;
@@ -113,7 +113,7 @@ function SupportTest() {
         }
 
         const sdkInstance = await paypal.createInstance({
-          clientToken: nextConfig.client_token,
+          clientId: nextConfig.client_id,
           components: ["paypal-payments"] as const,
           locale: "es-US",
           pageType: "checkout",
