@@ -51,10 +51,10 @@ def get_paypal_settings() -> PayPalSettings:
 
     if environment == "sandbox":
         api_base_url = "https://api-m.sandbox.paypal.com"
-        sdk_url = "https://www.sandbox.paypal.com/web-sdk/v6/core.js"
+        sdk_url = "https://www.sandbox.paypal.com/web-sdk/v6/core"
     else:
         api_base_url = "https://api-m.paypal.com"
-        sdk_url = "https://www.paypal.com/web-sdk/v6/core.js"
+        sdk_url = "https://www.paypal.com/web-sdk/v6/core"
 
     return PayPalSettings(
         client_id=client_id,
