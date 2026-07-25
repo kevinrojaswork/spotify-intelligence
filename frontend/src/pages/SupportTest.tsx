@@ -261,7 +261,7 @@ function SupportTest() {
         paypalButton.removeEventListener("click", clickHandler);
       }
 
-      buttonContainerRef.current?.replaceChildren();
+      paypalButton?.remove();
     };
   }, []);
 
@@ -334,9 +334,13 @@ function SupportTest() {
 
         <div
           className={`support-test-paypal ${isBusy ? "is-busy" : ""}`}
-          ref={buttonContainerRef}
           aria-busy={isBusy}
         >
+          <div
+            className="support-test-paypal-mount"
+            ref={buttonContainerRef}
+          />
+
           {paymentState === "loading" && (
             <p>Cargando el botón seguro de PayPal...</p>
           )}
