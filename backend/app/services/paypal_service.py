@@ -51,10 +51,10 @@ def get_paypal_settings() -> PayPalSettings:
 
     if environment == "sandbox":
         api_base_url = "https://api-m.sandbox.paypal.com"
-        sdk_url = "https://www.sandbox.paypal.com/web-sdk/v6/core"
+        sdk_url = "https://www.sandbox.paypal.com/web-sdk/v6/core.js"
     else:
         api_base_url = "https://api-m.paypal.com"
-        sdk_url = "https://www.paypal.com/web-sdk/v6/core"
+        sdk_url = "https://www.paypal.com/web-sdk/v6/core.js"
 
     return PayPalSettings(
         client_id=client_id,
@@ -144,6 +144,44 @@ def get_paypal_access_token(settings: PayPalSettings) -> str:
         )
 
     return str(access_token)
+
+
+def generate_browser_safe_client_token() -> str:
+    settings = get_paypal_settings()
+    access_token = get_paypal_access_token(settings)
+    token_url = f"{settings.api_base_url}/v1/identity/generate-token"
+
+    try:
+        response = httpx.post(
+            token_url,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept-Language": "en_US",
+                "Content-Type": "application/json",
+            },
+            json={},
+            timeout=PAYPAL_TIMEOUT_SECONDS,
+        )
+    except httpx.RequestError as exc:
+        logger.exception(
+            "No se pudo solicitar el client token de navegador de PayPal."
+        )
+        raise PayPalAPIError(
+            "No pudimos preparar el botón seguro de PayPal."
+        ) from exc
+
+    if response.status_code not in {200, 201}:
+        _raise_paypal_error(response, "generar el client token del navegador")
+
+    client_token = _read_json(response).get("client_token")
+
+    if not client_token:
+        logger.error("PayPal respondió sin client_token.")
+        raise PayPalAPIError(
+            "PayPal respondió de forma incompleta al preparar el botón."
+        )
+
+    return str(client_token)
 
 
 def create_test_order(spotify_user_id: str) -> dict[str, str]:

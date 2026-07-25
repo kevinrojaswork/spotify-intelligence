@@ -15,6 +15,7 @@ from app.services.paypal_service import (
     PayPalConfigurationError,
     capture_test_order,
     create_test_order,
+    generate_browser_safe_client_token,
     get_paypal_settings,
 )
 
@@ -39,11 +40,14 @@ def get_paypal_config(
 
     try:
         settings = get_paypal_settings()
+        client_token = generate_browser_safe_client_token()
     except PayPalConfigurationError as exc:
         raise _configuration_http_error(exc) from exc
+    except PayPalAPIError as exc:
+        raise _paypal_http_error(exc) from exc
 
     return {
-        "client_id": settings.client_id,
+        "client_token": client_token,
         "environment": settings.environment,
         "sdk_url": settings.sdk_url,
         "amount": PAYPAL_TEST_AMOUNT,

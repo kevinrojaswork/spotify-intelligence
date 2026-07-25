@@ -7,7 +7,7 @@ const API_BASE_URL =
 const PAYPAL_SCRIPT_ID = "spotify-intelligence-paypal-sdk-v6";
 
 type PayPalConfig = {
-  client_id: string;
+  client_token: string;
   environment: "sandbox" | "live";
   sdk_url: string;
   amount: string;
@@ -58,7 +58,7 @@ type PayPalSDKInstance = {
 type PayPalWindow = Window & {
   paypal?: {
     createInstance: (options: {
-      clientId: string;
+      clientToken: string;
       components: string[];
       pageType: "checkout";
     }) => Promise<PayPalSDKInstance>;
@@ -177,7 +177,7 @@ function SupportTest() {
         }
 
         const sdkInstance = await paypalWindow.paypal.createInstance({
-          clientId: nextConfig.client_id,
+          clientToken: nextConfig.client_token,
           components: ["paypal-payments"],
           pageType: "checkout",
         });
