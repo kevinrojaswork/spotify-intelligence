@@ -2,6 +2,7 @@ import { useState } from "react";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Layout from "./components/Layout";
+import SupportTest from "./pages/SupportTest";
 
 const SESSION_STORAGE_KEY = "session_token";
 const SPOTIFY_USER_STORAGE_KEY = "spotify_user_id";
@@ -36,6 +37,10 @@ function App() {
 
   if (!hasSession) {
     return <Landing />;
+  }
+
+  if (window.location.pathname === "/support-test") {
+    return <SupportTest />;
   }
 
   return (

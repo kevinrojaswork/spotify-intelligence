@@ -148,12 +148,42 @@ def migrate_spotify_users_table():
     conn.close()
 
 
+def migrate_paypal_test_orders_table():
+    conn = get_connection()
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS paypal_test_orders (
+            order_id TEXT PRIMARY KEY,
+            spotify_user_id TEXT NOT NULL,
+            amount TEXT NOT NULL,
+            currency TEXT NOT NULL,
+            status TEXT NOT NULL,
+            capture_id TEXT,
+            created_at INTEGER NOT NULL,
+            captured_at INTEGER
+        )
+        """
+    )
+
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_paypal_test_orders_user
+        ON paypal_test_orders (spotify_user_id, created_at)
+        """
+    )
+
+    conn.commit()
+    conn.close()
+
+
 def init_db():
     migrate_tracks_table()
     migrate_spotify_playlists_table()
     migrate_metadata_table()
     migrate_spotify_tokens_table()
     migrate_spotify_users_table()
+    migrate_paypal_test_orders_table()
 
 
 def normalize_artists(artists: Any) -> str:
@@ -1113,3 +1143,95 @@ def get_spotify_user(spotify_user_id: str) -> dict | None:
         "image_url": row["image_url"],
         "last_login": row["last_login"],
     }
+
+
+def save_paypal_test_order(
+    spotify_user_id: str,
+    order_id: str,
+    amount: str,
+    currency: str,
+    status: str,
+):
+    conn = get_connection()
+
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO paypal_test_orders (
+            order_id,
+            spotify_user_id,
+            amount,
+            currency,
+            status,
+            capture_id,
+            created_at,
+            captured_at
+        )
+        VALUES (?, ?, ?, ?, ?, NULL, ?, NULL)
+        """,
+        (
+            order_id,
+            spotify_user_id,
+            amount,
+            currency,
+            status,
+            int(time.time()),
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_paypal_test_order(order_id: str) -> dict | None:
+    conn = get_connection()
+
+    cursor = conn.execute(
+        """
+        SELECT
+            order_id,
+            spotify_user_id,
+            amount,
+            currency,
+            status,
+            capture_id,
+            created_at,
+            captured_at
+        FROM paypal_test_orders
+        WHERE order_id = ?
+        """,
+        (order_id,),
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return dict(row)
+
+
+def update_paypal_test_order_capture(
+    order_id: str,
+    status: str,
+    capture_id: str,
+):
+    conn = get_connection()
+
+    conn.execute(
+        """
+        UPDATE paypal_test_orders
+        SET status = ?, capture_id = ?, captured_at = ?
+        WHERE order_id = ?
+        """,
+        (
+            status,
+            capture_id,
+            int(time.time()),
+            order_id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+

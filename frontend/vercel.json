@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/support-test",
+      "destination": "/index.html"
+    }
+  ]
+}

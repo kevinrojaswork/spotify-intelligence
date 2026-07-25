@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database.db import init_db
-from app.routes import auth, engine
+from app.routes import auth, engine, payments
 
 
 init_db()
@@ -27,6 +27,7 @@ def health():
 
 fastapi_app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 fastapi_app.include_router(engine.router, tags=["Engine"])
+fastapi_app.include_router(payments.router, tags=["Payments"])
 
 
 frontend_url = os.getenv(
