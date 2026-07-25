@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { loadCoreSdkScript } from "@paypal/paypal-js/sdk-v6";
+import type { OnApproveDataOneTimePayments } from "@paypal/paypal-js/sdk-v6";
 
 import "../styles/SupportTest.css";
 
 const API_BASE_URL =
   "https://spotify-intelligence-production.up.railway.app";
-const PAYPAL_SCRIPT_ID = "spotify-intelligence-paypal-sdk-v6";
-
 type PayPalConfig = {
   client_token: string;
   environment: "sandbox" | "live";
-  sdk_url: string;
   amount: string;
   currency: string;
   is_test: boolean;
@@ -32,38 +31,6 @@ type PaymentState =
   | "completed"
   | "cancelled"
   | "error";
-
-type PayPalEligibility = {
-  isEligible: (method: string) => boolean;
-};
-
-type PayPalPaymentSession = {
-  start: (
-    options: { presentationMode: "auto" },
-    orderPromise: Promise<{ orderId: string }>
-  ) => Promise<void>;
-};
-
-type PayPalSDKInstance = {
-  findEligibleMethods: (options?: {
-    currencyCode?: string;
-  }) => Promise<PayPalEligibility>;
-  createPayPalOneTimePaymentSession: (callbacks: {
-    onApprove: (data: { orderId: string }) => Promise<CaptureResult>;
-    onCancel: () => void;
-    onError: (error: unknown) => void;
-  }) => PayPalPaymentSession | Promise<PayPalPaymentSession>;
-};
-
-type PayPalWindow = Window & {
-  paypal?: {
-    createInstance: (options: {
-      clientToken: string;
-      components: string[];
-      pageType: "checkout";
-    }) => Promise<PayPalSDKInstance>;
-  };
-};
 
 function getSessionHeaders() {
   const sessionToken = localStorage.getItem("session_token");
@@ -90,42 +57,6 @@ async function readApiResponse<T>(response: Response): Promise<T> {
   }
 
   return data;
-}
-
-function loadPayPalScript(scriptUrl: string): Promise<void> {
-  const paypalWindow = window as PayPalWindow;
-
-  if (paypalWindow.paypal?.createInstance) {
-    return Promise.resolve();
-  }
-
-  const existingScript = document.getElementById(
-    PAYPAL_SCRIPT_ID
-  ) as HTMLScriptElement | null;
-
-  if (existingScript) {
-    return new Promise((resolve, reject) => {
-      existingScript.addEventListener("load", () => resolve(), {
-        once: true,
-      });
-      existingScript.addEventListener(
-        "error",
-        () => reject(new Error("No se pudo cargar PayPal.")),
-        { once: true }
-      );
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.id = PAYPAL_SCRIPT_ID;
-    script.async = true;
-    script.src = scriptUrl;
-    script.onload = () => resolve();
-    script.onerror = () =>
-      reject(new Error("No se pudo cargar el sistema de PayPal."));
-    document.head.appendChild(script);
-  });
 }
 
 function SupportTest() {
@@ -162,23 +93,29 @@ function SupportTest() {
         }
 
         setConfig(nextConfig);
-        await loadPayPalScript(nextConfig.sdk_url);
+
+        const paypal = await loadCoreSdkScript({
+          environment:
+            nextConfig.environment === "sandbox"
+              ? "sandbox"
+              : "production",
+          debug: nextConfig.is_test,
+        });
 
         if (cancelled) {
           return;
         }
 
-        const paypalWindow = window as PayPalWindow;
-
-        if (!paypalWindow.paypal?.createInstance) {
+        if (!paypal) {
           throw new Error(
-            "PayPal terminó de cargar, pero no inició correctamente."
+            "PayPal no devolvió el cargador oficial del SDK."
           );
         }
 
-        const sdkInstance = await paypalWindow.paypal.createInstance({
+        const sdkInstance = await paypal.createInstance({
           clientToken: nextConfig.client_token,
-          components: ["paypal-payments"],
+          components: ["paypal-payments"] as const,
+          locale: "es-US",
           pageType: "checkout",
         });
 
@@ -239,7 +176,9 @@ function SupportTest() {
 
         const paymentSession = await Promise.resolve(
           sdkInstance.createPayPalOneTimePaymentSession({
-            onApprove: captureOrder,
+            onApprove: async (data: OnApproveDataOneTimePayments) => {
+              await captureOrder({ orderId: data.orderId });
+            },
             onCancel: () => {
               if (!cancelled) {
                 setPaymentState("cancelled");
