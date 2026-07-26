@@ -3,6 +3,10 @@
     {
       "source": "/support-test",
       "destination": "/index.html"
+    },
+    {
+      "source": "/support-live-test",
+      "destination": "/index.html"
     }
   ]
 }

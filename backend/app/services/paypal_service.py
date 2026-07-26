@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 PAYPAL_TEST_AMOUNT = "1.00"
 PAYPAL_TEST_CURRENCY = "USD"
+PAYPAL_LIVE_TEST_AMOUNT = "1.00"
+PAYPAL_LIVE_TEST_CURRENCY = "USD"
 PAYPAL_TIMEOUT_SECONDS = 20.0
 
 
@@ -34,6 +36,29 @@ class PayPalSettings:
     sdk_url: str
 
 
+def _read_bool_env(name: str, default: bool = False) -> bool:
+    raw_value = os.getenv(name)
+
+    if raw_value is None:
+        return default
+
+    normalized = raw_value.strip().lower()
+
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+
+    if normalized in {"0", "false", "no", "off", ""}:
+        return False
+
+    raise PayPalConfigurationError(
+        f"{name} debe ser 'true' o 'false'."
+    )
+
+
+def is_paypal_live_enabled() -> bool:
+    return _read_bool_env("PAYPAL_LIVE_ENABLED", default=False)
+
+
 def get_paypal_settings() -> PayPalSettings:
     client_id = os.getenv("PAYPAL_CLIENT_ID", "").strip()
     client_secret = os.getenv("PAYPAL_CLIENT_SECRET", "").strip()
@@ -51,10 +76,10 @@ def get_paypal_settings() -> PayPalSettings:
 
     if environment == "sandbox":
         api_base_url = "https://api-m.sandbox.paypal.com"
-        sdk_url = "https://www.sandbox.paypal.com/web-sdk/v6/core.js"
+        sdk_url = "https://www.sandbox.paypal.com/web-sdk/v6/core"
     else:
         api_base_url = "https://api-m.paypal.com"
-        sdk_url = "https://www.paypal.com/web-sdk/v6/core.js"
+        sdk_url = "https://www.paypal.com/web-sdk/v6/core"
 
     return PayPalSettings(
         client_id=client_id,
@@ -62,6 +87,29 @@ def get_paypal_settings() -> PayPalSettings:
         environment=environment,
         api_base_url=api_base_url,
         sdk_url=sdk_url,
+    )
+
+
+def get_paypal_live_settings() -> PayPalSettings:
+    if not is_paypal_live_enabled():
+        raise PayPalConfigurationError(
+            "La prueba real de PayPal está desactivada en el servidor."
+        )
+
+    client_id = os.getenv("PAYPAL_LIVE_CLIENT_ID", "").strip()
+    client_secret = os.getenv("PAYPAL_LIVE_CLIENT_SECRET", "").strip()
+
+    if not client_id or not client_secret:
+        raise PayPalConfigurationError(
+            "Las credenciales Live de PayPal no están configuradas en el servidor."
+        )
+
+    return PayPalSettings(
+        client_id=client_id,
+        client_secret=client_secret,
+        environment="live",
+        api_base_url="https://api-m.paypal.com",
+        sdk_url="https://www.paypal.com/web-sdk/v6/core",
     )
 
 
@@ -99,7 +147,7 @@ def _raise_paypal_error(
         )
     elif response.status_code == 422:
         message = (
-            "PayPal no pudo procesar esta operación de prueba. "
+            "PayPal no pudo procesar esta operación. "
             "Intenta nuevamente o revisa los registros del backend."
         )
     else:
@@ -146,8 +194,16 @@ def get_paypal_access_token(settings: PayPalSettings) -> str:
     return str(access_token)
 
 
-def create_test_order(spotify_user_id: str) -> dict[str, str]:
-    settings = get_paypal_settings()
+def _create_order(
+    *,
+    settings: PayPalSettings,
+    spotify_user_id: str,
+    amount: str,
+    currency: str,
+    reference_id: str,
+    description: str,
+    custom_id_prefix: str,
+) -> dict[str, str]:
     access_token = get_paypal_access_token(settings)
     create_url = f"{settings.api_base_url}/v2/checkout/orders"
 
@@ -155,12 +211,12 @@ def create_test_order(spotify_user_id: str) -> dict[str, str]:
         "intent": "CAPTURE",
         "purchase_units": [
             {
-                "reference_id": "spotify-intelligence-support-test",
-                "description": "Aporte voluntario de prueba",
-                "custom_id": f"support-test:{spotify_user_id}",
+                "reference_id": reference_id,
+                "description": description,
+                "custom_id": f"{custom_id_prefix}:{spotify_user_id}",
                 "amount": {
-                    "currency_code": PAYPAL_TEST_CURRENCY,
-                    "value": PAYPAL_TEST_AMOUNT,
+                    "currency_code": currency,
+                    "value": amount,
                 },
             }
         ],
@@ -179,9 +235,12 @@ def create_test_order(spotify_user_id: str) -> dict[str, str]:
             timeout=PAYPAL_TIMEOUT_SECONDS,
         )
     except httpx.RequestError as exc:
-        logger.exception("No se pudo crear la orden de PayPal.")
+        logger.exception(
+            "No se pudo crear la orden de PayPal en %s.",
+            settings.environment,
+        )
         raise PayPalAPIError(
-            "No pudimos crear la orden de prueba en PayPal."
+            "No pudimos crear la orden en PayPal."
         ) from exc
 
     if response.status_code not in {200, 201}:
@@ -200,13 +259,18 @@ def create_test_order(spotify_user_id: str) -> dict[str, str]:
     return {
         "order_id": str(order_id),
         "status": str(status),
-        "amount": PAYPAL_TEST_AMOUNT,
-        "currency": PAYPAL_TEST_CURRENCY,
+        "amount": amount,
+        "currency": currency,
     }
 
 
-def capture_test_order(order_id: str) -> dict[str, str]:
-    settings = get_paypal_settings()
+def _capture_order(
+    *,
+    settings: PayPalSettings,
+    order_id: str,
+    expected_amount: str,
+    expected_currency: str,
+) -> dict[str, str]:
     access_token = get_paypal_access_token(settings)
     capture_url = (
         f"{settings.api_base_url}/v2/checkout/orders/{order_id}/capture"
@@ -225,9 +289,13 @@ def capture_test_order(order_id: str) -> dict[str, str]:
             timeout=PAYPAL_TIMEOUT_SECONDS,
         )
     except httpx.RequestError as exc:
-        logger.exception("No se pudo capturar la orden de PayPal %s.", order_id)
+        logger.exception(
+            "No se pudo capturar la orden de PayPal %s en %s.",
+            order_id,
+            settings.environment,
+        )
         raise PayPalAPIError(
-            "No pudimos confirmar el pago de prueba en PayPal."
+            "No pudimos confirmar el pago en PayPal."
         ) from exc
 
     if response.status_code not in {200, 201}:
@@ -236,7 +304,7 @@ def capture_test_order(order_id: str) -> dict[str, str]:
     data = _read_json(response)
     status = str(data.get("status") or "")
     purchase_units = data.get("purchase_units") or []
-    capture = {}
+    capture: dict[str, Any] = {}
 
     if purchase_units:
         payments = purchase_units[0].get("payments") or {}
@@ -248,6 +316,11 @@ def capture_test_order(order_id: str) -> dict[str, str]:
     amount = capture.get("amount") or {}
     captured_value = str(amount.get("value") or "")
     captured_currency = str(amount.get("currency_code") or "")
+    receivable = capture.get("seller_receivable_breakdown") or {}
+    fee = receivable.get("paypal_fee") or {}
+    net = receivable.get("net_amount") or {}
+    paypal_fee = str(fee.get("value") or "")
+    net_amount = str(net.get("value") or "")
 
     if status != "COMPLETED":
         logger.error(
@@ -260,8 +333,8 @@ def capture_test_order(order_id: str) -> dict[str, str]:
         )
 
     if (
-        captured_value != PAYPAL_TEST_AMOUNT
-        or captured_currency != PAYPAL_TEST_CURRENCY
+        captured_value != expected_amount
+        or captured_currency != expected_currency
     ):
         logger.error(
             "Importe inesperado en PayPal. order=%s value=%s currency=%s",
@@ -270,7 +343,7 @@ def capture_test_order(order_id: str) -> dict[str, str]:
             captured_currency,
         )
         raise PayPalAPIError(
-            "El importe confirmado por PayPal no coincide con la prueba."
+            "El importe confirmado por PayPal no coincide con la orden."
         )
 
     if not capture_id:
@@ -285,4 +358,48 @@ def capture_test_order(order_id: str) -> dict[str, str]:
         "status": status,
         "amount": captured_value,
         "currency": captured_currency,
+        "paypal_fee": paypal_fee,
+        "net_amount": net_amount,
     }
+
+
+def create_test_order(spotify_user_id: str) -> dict[str, str]:
+    return _create_order(
+        settings=get_paypal_settings(),
+        spotify_user_id=spotify_user_id,
+        amount=PAYPAL_TEST_AMOUNT,
+        currency=PAYPAL_TEST_CURRENCY,
+        reference_id="spotify-intelligence-support-test",
+        description="Aporte voluntario de prueba",
+        custom_id_prefix="support-test",
+    )
+
+
+def capture_test_order(order_id: str) -> dict[str, str]:
+    return _capture_order(
+        settings=get_paypal_settings(),
+        order_id=order_id,
+        expected_amount=PAYPAL_TEST_AMOUNT,
+        expected_currency=PAYPAL_TEST_CURRENCY,
+    )
+
+
+def create_live_test_order(spotify_user_id: str) -> dict[str, str]:
+    return _create_order(
+        settings=get_paypal_live_settings(),
+        spotify_user_id=spotify_user_id,
+        amount=PAYPAL_LIVE_TEST_AMOUNT,
+        currency=PAYPAL_LIVE_TEST_CURRENCY,
+        reference_id="spotify-intelligence-support-live-test",
+        description="Aporte voluntario real de prueba",
+        custom_id_prefix="support-live-test",
+    )
+
+
+def capture_live_test_order(order_id: str) -> dict[str, str]:
+    return _capture_order(
+        settings=get_paypal_live_settings(),
+        order_id=order_id,
+        expected_amount=PAYPAL_LIVE_TEST_AMOUNT,
+        expected_currency=PAYPAL_LIVE_TEST_CURRENCY,
+    )
